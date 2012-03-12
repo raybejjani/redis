@@ -396,6 +396,25 @@ typedef struct zset {
     zskiplist *zsl;
 } zset;
 
+/* ISET specialized AVL structures */
+typedef struct avlNode {
+	robj *obj;
+	double leftScore, rightScore;
+	double subLeftMax, subRightMax;
+	char balance;
+	struct avlNode *left, *right, *parent;
+} avlNode;
+
+typedef struct avl {
+	struct avlNode *root;
+	unsigned long size;
+} avl;
+
+typedef struct iset {
+	avl *avltree;
+	dict *dict;
+} iset;
+
 typedef struct clientBufferLimitsConfig {
     unsigned long long hard_limit_bytes;
     unsigned long long soft_limit_bytes;
