@@ -39,7 +39,7 @@ avlNode *avlCreateNode(double lscore, double rscore, robj *obj) {
 	return an;
 }
 
-avlFreeNode(avlNode *node) {
+void avlFreeNode(avlNode *node) {
 	if (node->obj)
 		decrRefCount(node->obj);
 	if (!node->left)
@@ -49,7 +49,7 @@ avlFreeNode(avlNode *node) {
 	zfree(node);
 }
 
-avlFree(avl *tree) {
+void avlFree(avl *tree) {
 	if (tree->root != NULL)
 		avlFreeNode(tree->root);
 	zfree(tree);
@@ -152,8 +152,8 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 					avlRightRotation(locNode);
 					avlResetBalance(locNode->parent);
 				}
-				return 0;
 			}
+			return 0;
 		}
 	}
 	/* Insert in the right node */
@@ -186,8 +186,8 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 					avlLeftRotation(locNode);
 					avlResetBalance(locNode->parent);
 				}
-				return 0;
 			}
+			return 0;
 		}
 	}
 }
