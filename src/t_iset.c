@@ -128,7 +128,7 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 			locNode->left = insertNode;
 			insertNode->parent = locNode;
 			locNode->balance = locNode->balance - 1;
-			return locNode->balance ? 0 : 1;
+			return locNode->balance ? 1 : 0;
 		}
 		else {
 			// Left node is occupied, insert it into the subtree
@@ -162,7 +162,7 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 			locNode->right = insertNode;
 			insertNode->parent = locNode;
 			locNode->balance = locNode->balance + 1;
-			return locNode->balance ? 0 : 1;
+			return locNode->balance ? 1 : 0;
 		}
 		else {
 			// Right node is occupied, insert it into the subtree
