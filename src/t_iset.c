@@ -89,9 +89,9 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj) {
 	avlNode *an = avlCreateNode(lscore, rscore, obj);
 	
-	if (!tree->root)
+	if (!tree->root) {
 		tree->root = an;
-	else
+	} else {
 		avlInsertNode(tree->root, an);
 	}
 	
@@ -104,13 +104,11 @@ avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj) {
 
 /* This generic command implements both ZADD and ZINCRBY. */
 void iaddGenericCommand(redisClient *c, int incr) {
-    static char *nanerr = "resulting score is not a number (NaN)";
     robj *key = c->argv[1];
-    robj *ele;
     robj *iobj;
     robj *curobj;
     double min = 0, max = 0;
-    double score = 0, *mins, *maxes, curscore = 0.0;
+    double score = 0, *mins, *maxes;
     int j, elements = (c->argc-2)/2;
     int added = 0;
 
@@ -163,8 +161,7 @@ void iaddGenericCommand(redisClient *c, int incr) {
         max = maxes[j];
 
         curobj = avlCreateNode(min, max, iobj);
-        /* WTF do the return values mean? */
-        avlInsertNode(curobj);
+        avlInsert(iobj, min, max, curobj);
         /* XXX: I don't understand what incr is? */
         added++;
     }
