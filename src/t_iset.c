@@ -203,6 +203,8 @@ avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj) {
 	
 	tree->size = tree->size + 1;
 	
+	tree->size = tree->size + 1;
+	
 	return an;
 }
 
@@ -358,12 +360,12 @@ int avlRemove(avl *tree, double lscore, double rscore) {
  *----------------------------------------------------------------------------*/
 
 /* This generic command implements both ZADD and ZINCRBY. */
-void iaddGenericCommand(redisClient *c, int incr) {
+void iaddCommand(redisClient *c) {
     robj *key = c->argv[1];
     robj *iobj;
     robj *curobj;
     double min = 0, max = 0;
-    double score = 0, *mins, *maxes;
+    double *mins, *maxes;
     int j, elements = (c->argc-2)/2;
     int added = 0;
 
@@ -397,10 +399,10 @@ void iaddGenericCommand(redisClient *c, int incr) {
         }
     }
 
-    /* Lookup the key and create the sorted set if does not exist. */
+    /* Lookup the key and create the interval tree if does not exist. */
     iobj = lookupKeyWrite(c->db,key);
     if (iobj == NULL) {
-        iobj = avlCreate();
+        iobj = createIsetObject();
         dbAdd(c->db,key,iobj);
     } else {
         if (iobj->type != REDIS_ISET) {
@@ -417,15 +419,10 @@ void iaddGenericCommand(redisClient *c, int incr) {
 
         curobj = avlCreateNode(min, max, iobj);
         avlInsert(iobj, min, max, curobj);
-        /* XXX: I don't understand what incr is? */
         added++;
     }
 
     zfree(mins);
     zfree(maxes);
     addReplyLongLong(c,added);
-}
-
-void iaddCommand(redisClient *c) {
-    iaddGenericCommand(c,0);
 }

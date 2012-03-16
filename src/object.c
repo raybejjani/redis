@@ -73,6 +73,13 @@ robj *createListObject(void) {
     return o;
 }
 
+robj *createIsetObject(void) {
+    avl *a = avlCreate();
+    robj *o = createObject(REDIS_ISET,a);
+    o->encoding = REDIS_ENCODING_AVLTREE;
+    return o;
+}
+
 robj *createZiplistObject(void) {
     unsigned char *zl = ziplistNew();
     robj *o = createObject(REDIS_LIST,zl);

@@ -103,6 +103,7 @@
 #define REDIS_ENCODING_ZIPLIST 5 /* Encoded as ziplist */
 #define REDIS_ENCODING_INTSET 6  /* Encoded as intset */
 #define REDIS_ENCODING_SKIPLIST 7  /* Encoded as skiplist */
+#define REDIS_ENCODING_AVLTREE 8   /* Encoded as AVL Tree */
 
 /* Defines related to the dump file format. To store 32 bits lengths for short
  * keys requires a lot of space, so we check the most significant 2 bits of
@@ -940,6 +941,7 @@ size_t stringObjectLen(robj *o);
 robj *createStringObjectFromLongLong(long long value);
 robj *createStringObjectFromLongDouble(long double value);
 robj *createListObject(void);
+robj *createIsetObject(void);
 robj *createZiplistObject(void);
 robj *createSetObject(void);
 robj *createIntsetObject(void);
@@ -986,6 +988,19 @@ int loadAppendOnlyFile(char *filename);
 void stopAppendOnly(void);
 int startAppendOnly(void);
 void backgroundRewriteDoneHandler(int exitcode, int bysignal);
+
+/* AVL tree data type */
+
+avl *avlCreate(void);
+avlNode *avlCreateNode(double lscore, double rscore, robj *obj);
+void avlFreeNode(avlNode *node);
+void avlFree(avl *tree);
+int avlNodeCmp(avlNode *a, avlNode *b);
+void avlLeftRotation(avlNode *locNode);
+void avlRightRotation(avlNode *locNode);
+void avlResetBalance(avlNode *locNode);
+int avlInsertNode(avlNode *locNode, avlNode *insertNode);
+avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj);
 
 /* Sorted sets data type */
 
