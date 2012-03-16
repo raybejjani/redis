@@ -40,20 +40,18 @@ avlNode *avlCreateNode(double lscore, double rscore, robj *obj) {
 }
 
 avlFreeNode(avlNode *node) {
-	decrRefCount(node->obj);
-	if (!node->left) {
+	if (node->obj)
+		decrRefCount(node->obj);
+	if (!node->left)
 		avlFreeNode(node->left);
-	}	
-	if (!node->right) {
+	if (!node->right)
 		avlFreeNode(node->right);
-	}
 	zfree(node);
 }
 
 avlFree(avl *tree) {
-	if (tree->root != NULL) {
+	if (tree->root != NULL)
 		avlFreeNode(tree->root);
-	}
 	zfree(tree);
 }
 
