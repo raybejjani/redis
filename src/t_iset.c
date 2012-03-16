@@ -196,15 +196,165 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj) {
 	avlNode *an = avlCreateNode(lscore, rscore, obj);
 	
-	if (!tree->root) {
+	if (!tree->root)
 		tree->root = an;
-	} else {
+	else
 		avlInsertNode(tree->root, an);
-	}
+	
+	tree->size = tree->size + 1;
+	
+	tree->size = tree->size + 1;
 	
 	tree->size = tree->size + 1;
 	
 	return an;
+}
+
+
+void avlRemoveFromParent(avlNode *locNode, avlNode *replacementNode) {
+	if (locNode->parent->left == locNode)
+		locNode->parent->left = replacementNode;
+	else
+		locNode->parent->right = replacementNode;
+}
+
+
+int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
+	int diff = avlNodeCmp(locNode, delNode);
+	int heightDelta;
+	avlNode *replacementNode;
+		
+	// This is the node we want removed
+	if (diff == 0) {	
+		// Remove if leaf node or replace with child if only one child		
+		if (!locNode->left) {
+			if (!locNode->right) {
+				avlRemoveFromParent(locNode,NULL);
+				if (freeNodeMem)
+					avlFreeNode(locNode);
+				return -1;
+			}
+			avlRemoveFromParent(locNode,locNode->right);
+			if (freeNodeMem)
+				avlFreeNode(locNode);
+			return -1;
+		}
+		if (!locNode->right) {
+			avlRemoveFromParent(locNode,locNode->left);
+			if (freeNodeMem)
+				avlFreeNode(locNode);
+			return -1;
+		}
+		
+		// If two children, replace from subtree
+		if (locNode->balance < 0) {
+			// Replace with the node's in-order predecessor
+			replacementNode = locNode->left;
+			while (replacementNode->right)
+				replacementNode = replacementNode->right;
+		}
+		else {
+			// Replace with the node's in-order successor
+			replacementNode = locNode->right;
+			while (replacementNode->left)
+				replacementNode = replacementNode->left;
+		}
+		
+		// Remove the replacementNode from the tree
+		heightDelta = avlRemoveNode(locNode,replacementNode,0);
+		replacementNode->left = locNode->left;
+		replacementNode->right = locNode->right;
+		locNode->right->parent = replacementNode;
+		locNode->left->parent = replacementNode;
+		replacementNode->balance = locNode->balance;
+		
+		if (freeNodeMem)
+			avlFreeNode(locNode);
+			
+		if (replacementNode->balance == 0)
+			return heightDelta;
+			
+		return 0;
+	}
+	
+	// The node is in the left subtree
+	else if (diff > 0) {
+		if (locNode->left) {
+			heightDelta = avlRemoveNode(locNode->left,delNode,1);
+			if (heightDelta) {
+				locNode->balance = locNode->balance + 1;
+				if (locNode->balance == 0)
+					return -1;
+				else if (locNode->balance == 1)
+					return 0;
+					
+				if (locNode->right->balance == 1) {
+					avlLeftRotation(locNode);
+					locNode->parent->balance = 0;
+					locNode->parent->left->balance = 0;
+					return -1;
+				}
+				else if (locNode->right->balance == 0){
+					avlLeftRotation(locNode);
+					locNode->parent->balance = -1;
+					locNode->parent->left->balance = 1;
+					return 0;					
+				}
+				avlRightRotation(locNode->right);
+				avlLeftRotation(locNode);
+				avlResetBalance(locNode->parent);
+				return -1;
+			}
+		}
+	}
+	
+	// The node is in the right subtree
+	else if (diff < 0) {
+		if (locNode->right) {
+			heightDelta = avlRemoveNode(locNode->right,delNode,1);
+			if (heightDelta) {
+				locNode->balance = locNode->balance + 1;
+				if (locNode->balance == 0)
+					return -1;
+				else if (locNode->balance == 1)
+					return 0;
+					
+				if (locNode->left->balance == -1) {
+					avlRightRotation(locNode);
+					locNode->parent->balance = 0;
+					locNode->parent->right->balance = 0;
+					return -1;
+				}
+				else if (locNode->left->balance == 0){
+					avlRightRotation(locNode);
+					locNode->parent->balance = 1;
+					locNode->parent->right->balance = -1;
+					return 0;					
+				}
+				avlLeftRotation(locNode->left);
+				avlRightRotation(locNode);
+				avlResetBalance(locNode->parent);
+				return -1;
+			}
+		}
+	}
+	
+	return 0;
+}
+
+
+int avlRemove(avl *tree, double lscore, double rscore) {
+	if (!tree->root)
+		return 0;
+	
+	avlNode *delNode = avlCreateNode(lscore, rscore, NULL);
+	int removed = avlRemoveNode(tree->root, delNode, 1);
+	avlFreeNode(delNode);
+	
+	if (removed)
+		tree->size = tree->size - 1;
+		
+	return removed;
 }
 
 /*-----------------------------------------------------------------------------
