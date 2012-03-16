@@ -152,105 +152,26 @@ void iaddGenericCommand(redisClient *c, int incr) {
     } else {
         if (iobj->type != REDIS_ISET) {
             addReply(c,shared.wrongtypeerr);
-            zfree(scores);
+            zfree(mins);
+            zfree(maxes);
             return;
         }
     }
 
     for (j = 0; j < elements; j++) {
-        score = scores[j];
+        min = mins[j];
+        max = maxes[j];
 
-        if (zobj->encoding == REDIS_ENCODING_ZIPLIST) {
-            unsigned char *eptr;
-
-            /* Prefer non-encoded element when dealing with ziplists. */
-            ele = c->argv[3+j*2];
-            if ((eptr = zzlFind(zobj->ptr,ele,&curscore)) != NULL) {
-                if (incr) {
-                    score += curscore;
-                    if (isnan(score)) {
-                        addReplyError(c,nanerr);
-                        /* Don't need to check if the sorted set is empty
-                         * because we know it has at least one element. */
-                        zfree(scores);
-                        return;
-                    }
-                }
-
-                /* Remove and re-insert when score changed. */
-                if (score != curscore) {
-                    zobj->ptr = zzlDelete(zobj->ptr,eptr);
-                    zobj->ptr = zzlInsert(zobj->ptr,ele,score);
-
-                    signalModifiedKey(c->db,key);
-                    server.dirty++;
-                }
-            } else {
-                /* Optimize: check if the element is too large or the list
-                 * becomes too long *before* executing zzlInsert. */
-                zobj->ptr = zzlInsert(zobj->ptr,ele,score);
-                if (zzlLength(zobj->ptr) > server.zset_max_ziplist_entries)
-                    zsetConvert(zobj,REDIS_ENCODING_SKIPLIST);
-                if (sdslen(ele->ptr) > server.zset_max_ziplist_value)
-                    zsetConvert(zobj,REDIS_ENCODING_SKIPLIST);
-
-                signalModifiedKey(c->db,key);
-                server.dirty++;
-                if (!incr) added++;
-            }
-        } else if (zobj->encoding == REDIS_ENCODING_SKIPLIST) {
-            zset *zs = zobj->ptr;
-            zskiplistNode *znode;
-            dictEntry *de;
-
-            ele = c->argv[3+j*2] = tryObjectEncoding(c->argv[3+j*2]);
-            de = dictFind(zs->dict,ele);
-            if (de != NULL) {
-                curobj = dictGetKey(de);
-                curscore = *(double*)dictGetVal(de);
-
-                if (incr) {
-                    score += curscore;
-                    if (isnan(score)) {
-                        addReplyError(c,nanerr);
-                        /* Don't need to check if the sorted set is empty
-                         * because we know it has at least one element. */
-                        zfree(scores);
-                        return;
-                    }
-                }
-
-                /* Remove and re-insert when score changed. We can safely
-                 * delete the key object from the skiplist, since the
-                 * dictionary still has a reference to it. */
-                if (score != curscore) {
-                    redisAssertWithInfo(c,curobj,zslDelete(zs->zsl,curscore,curobj));
-                    znode = zslInsert(zs->zsl,score,curobj);
-                    incrRefCount(curobj); /* Re-inserted in skiplist. */
-                    dictGetVal(de) = &znode->score; /* Update score ptr. */
-
-                    signalModifiedKey(c->db,key);
-                    server.dirty++;
-                }
-            } else {
-                znode = zslInsert(zs->zsl,score,ele);
-                incrRefCount(ele); /* Inserted in skiplist. */
-                redisAssertWithInfo(c,NULL,dictAdd(zs->dict,ele,&znode->score) == DICT_OK);
-                incrRefCount(ele); /* Added to dictionary. */
-
-                signalModifiedKey(c->db,key);
-                server.dirty++;
-                if (!incr) added++;
-            }
-        } else {
-            redisPanic("Unknown sorted set encoding");
-        }
+        curobj = avlCreateNode(min, max, iobj);
+        /* WTF do the return values mean? */
+        avlInsertNode(curobj);
+        /* XXX: I don't understand what incr is? */
+        added++;
     }
-    zfree(scores);
-    if (incr) /* ZINCRBY */
-        addReplyDouble(c,score);
-    else /* ZADD */
-        addReplyLongLong(c,added);
+
+    zfree(mins);
+    zfree(maxes);
+    addReplyLongLong(c,added);
 }
 
 void iaddCommand(redisClient *c) {
