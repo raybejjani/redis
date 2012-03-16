@@ -89,6 +89,7 @@
 #define REDIS_SET 2
 #define REDIS_ZSET 3
 #define REDIS_HASH 4
+#define REDIS_ISET 5
 #define REDIS_VMPOINTER 8
 
 /* Objects encoding. Some kind of objects like Strings and Hashes can be
@@ -1195,6 +1196,7 @@ void slaveofCommand(redisClient *c);
 void debugCommand(redisClient *c);
 void msetCommand(redisClient *c);
 void msetnxCommand(redisClient *c);
+void iaddCommand(redisClient *c);
 void zaddCommand(redisClient *c);
 void zincrbyCommand(redisClient *c);
 void zrangeCommand(redisClient *c);

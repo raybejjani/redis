@@ -196,13 +196,90 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj) {
 	avlNode *an = avlCreateNode(lscore, rscore, obj);
 	
-	if (!tree->root)
+	if (!tree->root) {
 		tree->root = an;
-	else
+	} else {
 		avlInsertNode(tree->root, an);
 	}
 	
 	tree->size = tree->size + 1;
 	
 	return an;
+}
+
+/*-----------------------------------------------------------------------------
+ * Interval set commands 
+ *----------------------------------------------------------------------------*/
+
+/* This generic command implements both ZADD and ZINCRBY. */
+void iaddGenericCommand(redisClient *c, int incr) {
+    robj *key = c->argv[1];
+    robj *iobj;
+    robj *curobj;
+    double min = 0, max = 0;
+    double score = 0, *mins, *maxes;
+    int j, elements = (c->argc-2)/2;
+    int added = 0;
+
+    /* 5, 8, 11... arguments */
+    if ((c->argc - 2) % 3) {
+        addReply(c,shared.syntaxerr);
+        return;
+    }
+
+    /* Start parsing all the scores, we need to emit any syntax error
+     * before executing additions to the sorted set, as the command should
+     * either execute fully or nothing at all. */
+    mins = zmalloc(sizeof(double)*elements);
+    maxes = zmalloc(sizeof(double)*elements);
+    for (j = 0; j < elements; j++) {
+        /* mins are 2, 5, 8... */
+        if (getDoubleFromObjectOrReply(c,c->argv[2+j*3],&mins[j],NULL)
+            != REDIS_OK)
+        {
+            zfree(mins);
+            zfree(maxes);
+            return;
+        }
+        /* maxes are 3, 6, 9... */
+        if (getDoubleFromObjectOrReply(c,c->argv[3+j*3],&maxes[j],NULL)
+            != REDIS_OK)
+        {
+            zfree(mins);
+            zfree(maxes);
+            return;
+        }
+    }
+
+    /* Lookup the key and create the sorted set if does not exist. */
+    iobj = lookupKeyWrite(c->db,key);
+    if (iobj == NULL) {
+        iobj = avlCreate();
+        dbAdd(c->db,key,iobj);
+    } else {
+        if (iobj->type != REDIS_ISET) {
+            addReply(c,shared.wrongtypeerr);
+            zfree(mins);
+            zfree(maxes);
+            return;
+        }
+    }
+
+    for (j = 0; j < elements; j++) {
+        min = mins[j];
+        max = maxes[j];
+
+        curobj = avlCreateNode(min, max, iobj);
+        avlInsert(iobj, min, max, curobj);
+        /* XXX: I don't understand what incr is? */
+        added++;
+    }
+
+    zfree(mins);
+    zfree(maxes);
+    addReplyLongLong(c,added);
+}
+
+void iaddCommand(redisClient *c) {
+    iaddGenericCommand(c,0);
 }
