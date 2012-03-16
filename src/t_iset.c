@@ -251,10 +251,10 @@ void iaddCommand(redisClient *c) {
         }
     }
 
-    /* Lookup the key and create the sorted set if does not exist. */
+    /* Lookup the key and create the interval tree if does not exist. */
     iobj = lookupKeyWrite(c->db,key);
     if (iobj == NULL) {
-        iobj = avlCreate();
+        iobj = createIsetObject();
         dbAdd(c->db,key,iobj);
     } else {
         if (iobj->type != REDIS_ISET) {
@@ -271,7 +271,6 @@ void iaddCommand(redisClient *c) {
 
         curobj = avlCreateNode(min, max, iobj);
         avlInsert(iobj, min, max, curobj);
-        /* XXX: I don't understand what incr is? */
         added++;
     }
 
