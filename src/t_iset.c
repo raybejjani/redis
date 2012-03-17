@@ -353,6 +353,11 @@ int avlRemove(avl *tree, double lscore, double rscore) {
 	return removed;
 }
 
+unsigned char *avlFind(avl *tree, avlNode *node) {
+    /* TODO */
+    return NULL;
+}
+
 /*-----------------------------------------------------------------------------
  * Interval set commands 
  *----------------------------------------------------------------------------*/
