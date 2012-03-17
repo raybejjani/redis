@@ -127,7 +127,7 @@ void avlUpdateMaxScores(avlNode *locNode) {
 	
 	while (locNode) {
 		if (locNode->left) {
-			oldNodeMax = locNode->left->RightScore;
+			oldNodeMax = locNode->left->rightScore;
 			oldNodeMax = (oldNodeMax > locNode->left->subLeftMax) ? oldNodeMax : locNode->left->subLeftMax;
 			oldNodeMax = (oldNodeMax > locNode->left->subRightMax) ? oldNodeMax : locNode->left->subRightMax;
 			if (locNode->subLeftMax < oldNodeMax)
@@ -136,7 +136,7 @@ void avlUpdateMaxScores(avlNode *locNode) {
 				return;
 		}
 		if (locNode->right) {
-			oldNodeMax = locNode->right->RightScore;
+			oldNodeMax = locNode->right->rightScore;
 			oldNodeMax = (oldNodeMax > locNode->right->subLeftMax) ? oldNodeMax : locNode->right->subLeftMax;
 			oldNodeMax = (oldNodeMax > locNode->right->subRightMax) ? oldNodeMax : locNode->right->subRightMax;
 			if (locNode->subRightMax < oldNodeMax)
@@ -209,7 +209,7 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 			// Right node is occupied, insert it into the subtree
 			if (avlInsertNode(locNode->right,insertNode)) {
 				locNode->balance = locNode->balance - 1;
-				if (locNode->balance == 0) {
+				if (locNode->balance == 0)
 					return 0;
 				else if (locNode->balance == -1)
 					return 1;
