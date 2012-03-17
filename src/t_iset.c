@@ -353,7 +353,7 @@ int avlRemove(avl *tree, double lscore, double rscore) {
 	return removed;
 }
 
-unsigned char *avlFind(avl *tree, avlNode *node) {
+unsigned char *avlFind(avl *tree, robj *node, double *min, double *max) {
     /* TODO */
     return NULL;
 }
@@ -369,7 +369,7 @@ void iaddCommand(redisClient *c) {
     robj *curobj;
     robj *ele;
     double min = 0, max = 0;
-    double *mins, *maxes;
+    double *mins, *maxes, curmin = 0.0, curmax = 0.0;
     int j, elements = (c->argc-2)/2;
     int added = 0;
 
@@ -421,12 +421,22 @@ void iaddCommand(redisClient *c) {
         min = mins[j];
         max = maxes[j];
 
+        unsigned char* eptr;
+
         ele = c->argv[4+j*3];
 
         /* If object is found in iobj */
-            /* remove and re-insert */
-        /* else */
+        if ((eptr = avlFind(iobj->ptr,ele,&curmin,&curmax)) != NULL) {
+            if (curmin != min || curmax != max) {
+                /* remove and re-insert */
+                /* TODO */
+
+                signalModifiedKey(c->db,key);
+                server.dirty++;
+            }
+        } else {
             /* insert into the tree */
+        }
 
         curobj = avlCreateNode(min, max, iobj);
         avlInsert(iobj, min, max, curobj);
