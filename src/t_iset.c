@@ -362,6 +362,7 @@ void iaddCommand(redisClient *c) {
     robj *key = c->argv[1];
     robj *iobj;
     robj *curobj;
+    robj *ele;
     double min = 0, max = 0;
     double *mins, *maxes;
     int j, elements = (c->argc-2)/2;
@@ -414,6 +415,13 @@ void iaddCommand(redisClient *c) {
     for (j = 0; j < elements; j++) {
         min = mins[j];
         max = maxes[j];
+
+        ele = c->argv[4+j*3];
+
+        /* If object is found in iobj */
+            /* remove and re-insert */
+        /* else */
+            /* insert into the tree */
 
         curobj = avlCreateNode(min, max, iobj);
         avlInsert(iobj, min, max, curobj);
