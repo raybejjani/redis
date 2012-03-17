@@ -203,8 +203,6 @@ avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj) {
 	
 	tree->size = tree->size + 1;
 	
-	tree->size = tree->size + 1;
-	
 	return an;
 }
 
