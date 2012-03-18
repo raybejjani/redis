@@ -416,7 +416,6 @@ unsigned char *avlFind(avl *tree, robj *node, double *min, double *max) {
  * Interval set commands 
  *----------------------------------------------------------------------------*/
 
-/* This generic command implements both ZADD and ZINCRBY. */
 void iaddCommand(redisClient *c) {
     robj *key = c->argv[1];
     robj *iobj;
