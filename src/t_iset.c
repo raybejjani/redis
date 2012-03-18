@@ -151,8 +151,6 @@ void avlUpdateMaxScores(avlNode *locNode) {
 
 int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 	/* Insert in the left node */
-	double tempMax;
-	
 	if (avlNodeCmp(locNode,insertNode) > -1) {
 		if (!locNode->left) {
 			locNode->left = insertNode;
@@ -466,9 +464,8 @@ void iaddCommand(redisClient *c) {
     for (j = 0; j < elements; j++) {
         min = mins[j];
         max = maxes[j];
-
-        curobj = avlCreateNode(min, max, iobj);
-        avlInsert(iobj, min, max, curobj);
+				curobj = c->argv[4+j*3];
+        avlInsert((avl *) iobj->ptr, min, max, curobj);
         added++;
     }
 
