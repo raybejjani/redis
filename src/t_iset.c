@@ -28,8 +28,8 @@ avlNode *avlCreateNode(double lscore, double rscore, robj *obj) {
 	avlNode *an = zmalloc(sizeof(*an));
 	an->leftScore = lscore;
 	an->rightScore = rscore;
-	an->subLeftMax = 0;
-	an->subRightMax = 0;
+	an->subLeftMax = -INFINITY;
+	an->subRightMax = -INFINITY;
 	an->balance = 0;
 	an->left = NULL;
 	an->right = NULL;
@@ -121,13 +121,48 @@ void avlResetBalance(avlNode *locNode) {
 	locNode->balance = 0;
 }
 
+
+void avlUpdateMaxScores(avlNode *locNode) {
+	double oldNodeMax;
+	
+	while (locNode) {
+		if (locNode->left) {
+			oldNodeMax = locNode->left->rightScore;
+			oldNodeMax = (oldNodeMax > locNode->left->subLeftMax) ? oldNodeMax : locNode->left->subLeftMax;
+			oldNodeMax = (oldNodeMax > locNode->left->subRightMax) ? oldNodeMax : locNode->left->subRightMax;
+			if (locNode->subLeftMax < oldNodeMax)
+				locNode->subLeftMax = oldNodeMax;
+			else
+				return;
+		}
+		else {
+			locNode->subLeftMax = -INFINITY;
+		}
+		if (locNode->right) {
+			oldNodeMax = locNode->right->rightScore;
+			oldNodeMax = (oldNodeMax > locNode->right->subLeftMax) ? oldNodeMax : locNode->right->subLeftMax;
+			oldNodeMax = (oldNodeMax > locNode->right->subRightMax) ? oldNodeMax : locNode->right->subRightMax;
+			if (locNode->subRightMax < oldNodeMax)
+				locNode->subRightMax = oldNodeMax;
+			else
+				return;
+		}
+		else {
+			locNode->subRightMax = -INFINITY;
+		}
+		locNode = locNode->parent;
+	}
+}
+
+
 int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 	/* Insert in the left node */
 	if (avlNodeCmp(locNode,insertNode) > -1) {
 		if (!locNode->left) {
 			locNode->left = insertNode;
 			insertNode->parent = locNode;
-			locNode->balance = locNode->balance - 1;
+			locNode->balance = locNode->balance - 1;	
+			avlUpdateMaxScores(locNode);	
 			return locNode->balance ? 1 : 0;
 		}
 		else {
@@ -145,13 +180,22 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 					avlRightRotation(locNode);
 					locNode->right->balance = 0;
 					locNode->parent->balance = 0;
+					
+					locNode->subLeftMax = locNode->parent->subRightMax;
+					locNode->parent->subRightMax = -INFINITY;
 				}
 				else {
 					// Left-Right, left rotation then right rotation needed
 					avlLeftRotation(locNode->left);
 					avlRightRotation(locNode);
 					avlResetBalance(locNode->parent);
+					
+					locNode->subLeftMax = locNode->parent->subRightMax;
+					locNode->parent->left->subRightMax = locNode->parent->subLeftMax;
+					locNode->parent->subRightMax = -INFINITY;
+					locNode->parent->subLeftMax = -INFINITY;
 				}
+				avlUpdateMaxScores(locNode->parent); 
 			}
 			return 0;
 		}
@@ -162,6 +206,7 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 			locNode->right = insertNode;
 			insertNode->parent = locNode;
 			locNode->balance = locNode->balance + 1;
+			avlUpdateMaxScores(locNode);
 			return locNode->balance ? 1 : 0;
 		}
 		else {
@@ -179,13 +224,22 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 					avlLeftRotation(locNode);
 					locNode->left->balance = 0;
 					locNode->parent->balance = 0;
+					
+					locNode->subRightMax = locNode->parent->subLeftMax;
+					locNode->parent->subLeftMax = -INFINITY;
 				}
 				else {
 					// Right-Left, right rotation then left rotation needed
 					avlRightRotation(locNode->right);
 					avlLeftRotation(locNode);
 					avlResetBalance(locNode->parent);
+					
+					locNode->subRightMax = locNode->parent->subLeftMax;
+					locNode->parent->right->subLeftMax = locNode->parent->subRightMax;
+					locNode->parent->subRightMax = -INFINITY;
+					locNode->parent->subLeftMax = -INFINITY;
 				}
+				avlUpdateMaxScores(locNode->parent); 
 			}
 			return 0;
 		}
@@ -436,10 +490,12 @@ void iaddCommand(redisClient *c) {
             }
         } else {
             /* insert into the tree */
+            avlInsert((avl *) iobj->ptr, min, max, ele);
+
+            signalModifiedKey(c->db,key);
+            server.dirty++;
         }
 
-        curobj = avlCreateNode(min, max, iobj);
-        avlInsert(iobj, min, max, curobj);
         added++;
     }
 
