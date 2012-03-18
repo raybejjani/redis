@@ -420,7 +420,6 @@ unsigned char *avlFind(avl *tree, robj *node, double *min, double *max) {
 void iaddCommand(redisClient *c) {
     robj *key = c->argv[1];
     robj *iobj;
-    robj *curobj;
     robj *ele;
     double min = 0, max = 0;
     double *mins, *maxes, curmin = 0.0, curmax = 0.0;
@@ -490,6 +489,7 @@ void iaddCommand(redisClient *c) {
             }
         } else {
             /* insert into the tree */
+            /* XXX: do we need the cast here? */
             avlInsert((avl *) iobj->ptr, min, max, ele);
 
             signalModifiedKey(c->db,key);
