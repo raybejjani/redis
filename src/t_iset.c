@@ -407,7 +407,10 @@ int avlRemove(avl *tree, double lscore, double rscore) {
 	return removed;
 }
 
-
+unsigned char *avlFind(avl *tree, robj *node, double *min, double *max) {
+    /* TODO */
+    return NULL;
+}
 
 /*-----------------------------------------------------------------------------
  * Interval set commands 
@@ -417,9 +420,9 @@ int avlRemove(avl *tree, double lscore, double rscore) {
 void iaddCommand(redisClient *c) {
     robj *key = c->argv[1];
     robj *iobj;
-    robj *curobj;
+    robj *ele;
     double min = 0, max = 0;
-    double *mins, *maxes;
+    double *mins, *maxes, curmin = 0.0, curmax = 0.0;
     int j, elements = (c->argc-2)/2;
     int added = 0;
 
@@ -470,8 +473,29 @@ void iaddCommand(redisClient *c) {
     for (j = 0; j < elements; j++) {
         min = mins[j];
         max = maxes[j];
-				curobj = c->argv[4+j*3];
-        avlInsert((avl *) iobj->ptr, min, max, curobj);
+
+        unsigned char* eptr;
+
+        ele = c->argv[4+j*3];
+
+        /* If object is found in iobj */
+        if ((eptr = avlFind(iobj->ptr,ele,&curmin,&curmax)) != NULL) {
+            if (curmin != min || curmax != max) {
+                /* remove and re-insert */
+                /* TODO */
+
+                signalModifiedKey(c->db,key);
+                server.dirty++;
+            }
+        } else {
+            /* insert into the tree */
+            /* XXX: do we need the cast here? */
+            avlInsert((avl *) iobj->ptr, min, max, ele);
+
+            signalModifiedKey(c->db,key);
+            server.dirty++;
+        }
+
         added++;
     }
 
