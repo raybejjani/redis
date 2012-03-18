@@ -502,3 +502,25 @@ void iaddCommand(redisClient *c) {
     zfree(maxes);
     addReplyLongLong(c,added);
 }
+
+void istabCommand(redisClient *c) {
+    double point;
+    robj *key = c->argv[1];
+    robj *iobj;
+    int withintervals = 0;
+
+    if (getDoubleFromObjectOrReply(c,c->argv[2],&point) != REDIS_OK) {
+        addReplyError(c,"point is not a float");
+        return;
+    }
+
+    if (c->argc > 3) {
+        if (!strcasecmp(c->argv[3]->ptr,"withintervals"))
+            withintervals = 1;
+        else
+            addReply(c,shared.syntaxerr);
+    }
+
+    if ((iobj = lookupKeyReadOrReply(c,key,shared.nokeyerr)) == NULL ||
+        checkType(c,iobj,REDIS_ISET)) return;
+}
