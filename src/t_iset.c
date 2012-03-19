@@ -549,7 +549,7 @@ void iaddCommand(redisClient *c) {
 
 
 /* This command implements ISTAB, ISTABINTERVAL. */
-void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj) {
+void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int withintervals) {
     double lscore, rscore;
     robj *key = c->argv[1];
     robj *iobj;
@@ -565,12 +565,7 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj) {
         return;
     }
 
-    if (c->argc > 4) {
-        if (!strcasecmp(c->argv[4]->ptr,"withintervals"))
-            withintervals = 1;
-        else
-            addReply(c,shared.syntaxerr);
-    }
+
 
     if ((iobj = lookupKeyReadOrReply(c,key,shared.nokeyerr)) == NULL ||
         checkType(c,iobj,REDIS_ISET)) return;
@@ -580,10 +575,23 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj) {
 
 
 void istabCommand(redisClient *c) {
-    genericStabCommand(c, c->argv[2], c->argv[2]);
+    int withintervals = 0;
+    if (c->argc > 3) {
+        if (!strcasecmp(c->argv[3]->ptr,"withintervals"))
+            withintervals = 1;
+        else
+            addReply(c,shared.syntaxerr);
+    }
+    genericStabCommand(c, c->argv[2], c->argv[2], withintervals);
 }
 
 
 void istabIntervalCommand(redisClient *c) {
+    if (c->argc > 4) {
+        if (!strcasecmp(c->argv[4]->ptr,"withintervals"))
+            withintervals = 1;
+        else
+            addReply(c,shared.syntaxerr);
+    }
     genericStabCommand(c, c->argv[2], c->argv[3]);
 }
