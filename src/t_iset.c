@@ -451,7 +451,22 @@ int avlRemove(avl *tree, double lscore, double rscore) {
 	return removed;
 }
 
-unsigned char *avlFind(avl *tree, robj *node, double *min, double *max) {
+
+/*
+This structure is a simple linked list that is built during the 
+avlFind method. On each successful stab, the stabbed node is 
+added to the list and the list tail is updated to the new node.
+
+The genericStabCommand maintains a pointer to the list head, which
+is the initial node passed to avlFind.
+*/
+typedef struct avlResultNode {
+    avlNode * data;
+    avlResultNode * next;
+} avlResultNode;
+
+
+avlResultNode * avlFind(avl *tree, robj *node, double *min, double *max, avlResultNode * results) {
     /* TODO */
     return NULL;
 }
