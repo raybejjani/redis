@@ -547,19 +547,26 @@ void iaddCommand(redisClient *c) {
     addReplyLongLong(c,added);
 }
 
-void istabCommand(redisClient *c) {
-    double point;
+
+/* This command implements ISTAB, ISTABINTERVAL. */
+void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj) {
+    double lscore, rscore;
     robj *key = c->argv[1];
     robj *iobj;
     int withintervals = 0;
 
-    if (getDoubleFromObjectOrReply(c,c->argv[2],&point) != REDIS_OK) {
-        addReplyError(c,"point is not a float");
+    if (getDoubleFromObjectOrReply(c,lscoreObj,&lscore,NULL) != REDIS_OK) {
+        addReplyError(c,"left endpoint is not a float");
+        return;
+    }
+    
+    if (getDoubleFromObjectOrReply(c,rscoreObj,&rscore,NULL) != REDIS_OK) {
+        addReplyError(c,"right endpoint is not a float");
         return;
     }
 
-    if (c->argc > 3) {
-        if (!strcasecmp(c->argv[3]->ptr,"withintervals"))
+    if (c->argc > 4) {
+        if (!strcasecmp(c->argv[4]->ptr,"withintervals"))
             withintervals = 1;
         else
             addReply(c,shared.syntaxerr);
@@ -567,4 +574,16 @@ void istabCommand(redisClient *c) {
 
     if ((iobj = lookupKeyReadOrReply(c,key,shared.nokeyerr)) == NULL ||
         checkType(c,iobj,REDIS_ISET)) return;
+        
+    
+}
+
+
+void istabCommand(redisClient *c) {
+    genericStabCommand(c, c->argv[2], c->argv[2]);
+}
+
+
+void istabIntervalCommand(redisClient *c) {
+    genericStabCommand(c, c->argv[2], c->argv[3]);
 }

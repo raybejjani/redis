@@ -1213,6 +1213,7 @@ void msetCommand(redisClient *c);
 void msetnxCommand(redisClient *c);
 void iaddCommand(redisClient *c);
 void istabCommand(redisClient *c);
+void istabIntervalCommand(redisClient *c);
 void zaddCommand(redisClient *c);
 void zincrbyCommand(redisClient *c);
 void zrangeCommand(redisClient *c);
