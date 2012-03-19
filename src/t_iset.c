@@ -553,7 +553,6 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
     double lscore, rscore;
     robj *key = c->argv[1];
     robj *iobj;
-    int withintervals = 0;
 
     if (getDoubleFromObjectOrReply(c,lscoreObj,&lscore,NULL) != REDIS_OK) {
         addReplyError(c,"left endpoint is not a float");
@@ -566,11 +565,8 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
     }
 
 
-
     if ((iobj = lookupKeyReadOrReply(c,key,shared.nokeyerr)) == NULL ||
         checkType(c,iobj,REDIS_ISET)) return;
-        
-    
 }
 
 
