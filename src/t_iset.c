@@ -583,11 +583,12 @@ void istabCommand(redisClient *c) {
 
 
 void istabIntervalCommand(redisClient *c) {
+    int withintervals = 0;
     if (c->argc > 4) {
         if (!strcasecmp(c->argv[4]->ptr,"withintervals"))
             withintervals = 1;
         else
             addReply(c,shared.syntaxerr);
     }
-    genericStabCommand(c, c->argv[2], c->argv[3]);
+    genericStabCommand(c, c->argv[2], c->argv[3], withintervals);
 }
