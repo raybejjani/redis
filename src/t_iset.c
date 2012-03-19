@@ -280,17 +280,23 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 		if (!locNode->left) {
 			if (!locNode->right) {
 				avlRemoveFromParent(locNode,NULL);
+				if (locNode->parent)
+					avlUpdateMaxScores(locNode->parent);
 				if (freeNodeMem)
 					avlFreeNode(locNode);
 				return -1;
 			}
 			avlRemoveFromParent(locNode,locNode->right);
+			if (locNode->parent)
+				avlUpdateMaxScores(locNode->parent);
 			if (freeNodeMem)
 				avlFreeNode(locNode);
 			return -1;
 		}
 		if (!locNode->right) {
 			avlRemoveFromParent(locNode,locNode->left);
+			if (locNode->parent)
+				avlUpdateMaxScores(locNode->parent);
 			if (freeNodeMem)
 				avlFreeNode(locNode);
 			return -1;
@@ -317,7 +323,8 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 		locNode->right->parent = replacementNode;
 		locNode->left->parent = replacementNode;
 		replacementNode->balance = locNode->balance;
-		
+		if (locNode->parent)
+			avlUpdateMaxScores(locNode->parent);
 		if (freeNodeMem)
 			avlFreeNode(locNode);
 			
@@ -342,17 +349,35 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 					avlLeftRotation(locNode);
 					locNode->parent->balance = 0;
 					locNode->parent->left->balance = 0;
+					
+					locNode->subRightMax = locNode->parent->subLeftMax;
+					locNode->parent->subLeftMax = -INFINITY;
+					avlUpdateMaxScores(locNode->parent);
+					
 					return -1;
 				}
 				else if (locNode->right->balance == 0){
 					avlLeftRotation(locNode);
 					locNode->parent->balance = -1;
 					locNode->parent->left->balance = 1;
+					
+					locNode->subRightMax = locNode->parent->subLeftMax;
+					locNode->parent->subLeftMax = -INFINITY;
+					avlUpdateMaxScores(locNode->parent); 
+					
 					return 0;					
 				}
 				avlRightRotation(locNode->right);
 				avlLeftRotation(locNode);
 				avlResetBalance(locNode->parent);
+				
+				locNode->subRightMax = locNode->parent->subLeftMax;
+				locNode->parent->right->subLeftMax = locNode->parent->subRightMax;
+				locNode->parent->subRightMax = -INFINITY;
+				locNode->parent->subLeftMax = -INFINITY;
+				
+				avlUpdateMaxScores(locNode->parent);
+				
 				return -1;
 			}
 		}
@@ -373,17 +398,33 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 					avlRightRotation(locNode);
 					locNode->parent->balance = 0;
 					locNode->parent->right->balance = 0;
+					
+					locNode->subLeftMax = locNode->parent->subRightMax;
+					locNode->parent->subRightMax = -INFINITY;
+					avlUpdateMaxScores(locNode->parent);
+					
 					return -1;
 				}
 				else if (locNode->left->balance == 0){
 					avlRightRotation(locNode);
 					locNode->parent->balance = 1;
 					locNode->parent->right->balance = -1;
+					
+					locNode->subLeftMax = locNode->parent->subRightMax;
+					locNode->parent->subRightMax = -INFINITY;
+					avlUpdateMaxScores(locNode->parent);
+					
 					return 0;					
 				}
 				avlLeftRotation(locNode->left);
 				avlRightRotation(locNode);
 				avlResetBalance(locNode->parent);
+				
+				locNode->subLeftMax = locNode->parent->subRightMax;
+				locNode->parent->left->subRightMax = locNode->parent->subLeftMax;
+				locNode->parent->subRightMax = -INFINITY;
+				locNode->parent->subLeftMax = -INFINITY;
+				
 				return -1;
 			}
 		}
@@ -403,6 +444,9 @@ int avlRemove(avl *tree, double lscore, double rscore) {
 	
 	if (removed)
 		tree->size = tree->size - 1;
+		
+	if (tree->size == 0)
+		tree->root = NULL;
 		
 	return removed;
 }
