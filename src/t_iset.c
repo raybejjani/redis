@@ -621,6 +621,9 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
     robj *key = c->argv[1];
     robj *iobj;
     avlResultNode * results;
+    avlResultNode * walker;
+    void *replylen = NULL;
+    unsigned long resultslen = 0;
 
     if (getDoubleFromObjectOrReply(c,lscoreObj,&lscore,NULL) != REDIS_OK) {
         addReplyError(c,"left endpoint is not a float");
@@ -640,6 +643,26 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
     
     // TODO: Walk through the results and return them. Include intervals when 
     // 'withintervals' is set.
+    
+    /* No results. */
+    if (results == NULL) {
+        addReply(c, shared.emptymultibulk);
+        return;
+    }
+    
+    /* We don't know in advance how many matching elements there are in the
+     * list, so we push this object that will represent the multi-bulk
+     * length in the output buffer, and will "fix" it later */
+    replylen = addDeferredMultiBulkLength(c);
+    walker = results;
+    
+    while (walker) {
+        resultslen = resultslen + 1;
+        addReplyBulk(c,walker->data->obj);
+        walker = walker->next;
+    }
+    
+    setDeferredMultiBulkLength(c, replylen, resultslen);
     
     if (results)
         avlFreeResults(results);
