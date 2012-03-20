@@ -462,14 +462,55 @@ is the initial node passed to avlFind.
 */
 typedef struct avlResultNode {
     avlNode * data;
-    avlResultNode * next;
+    struct avlResultNode * next;
 } avlResultNode;
 
-
-avlResultNode * avlFind(avl *tree, robj *node, double *min, double *max, avlResultNode * results) {
-    /* TODO */
-    return NULL;
+avlResultNode *avlCreateResultNode(avlNode *data) {
+	avlResultNode *arn = zmalloc(sizeof(*arn));
+    arn->data = data;
+    return arn;
 }
+
+
+void avlFreeResults(avlResultNode *node) {
+    if (node->next)
+        avlFreeResults(node->next);
+    zfree(node);
+}
+
+
+avlResultNode * avlStab(avlNode *node, double min, double max, avlResultNode *results) {
+    
+    // If the minimum endpoint of the interval falls to the right of the current node's interval and
+    // any sub-tree intervals, there cannot be an interval match
+    if (min > node->subRightMax && min > node->subLeftMax && min > node->rightScore)
+        return results;
+        
+    // Search the node's left subtree
+    if (node->left)
+        results = avlStab(node->left, min, max, results);
+        
+    // Check to see if this node overlaps. 
+    // For now we're only going to check for containment.
+    if (min >= node->leftScore && max <= node->rightScore) {
+        avlResultNode * newResult = avlCreateResultNode(node);
+        if (results)
+            results->next = newResult;
+        results = newResult;
+    }
+    
+    // If the max endpoint of the interval falls to the left of the start of the current node's
+    // interval, there cannot be an interval match to the right of this node
+    if (max < node->leftScore)
+        return results;
+        
+    // Search the node's right subtree
+    if (node->right)
+        results = avlStab(node->right, min, max, results);
+        
+    return results;
+}
+
 
 /*-----------------------------------------------------------------------------
  * Interval set commands 
@@ -579,6 +620,7 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
     double lscore, rscore;
     robj *key = c->argv[1];
     robj *iobj;
+    avlResultNode * results;
 
     if (getDoubleFromObjectOrReply(c,lscoreObj,&lscore,NULL) != REDIS_OK) {
         addReplyError(c,"left endpoint is not a float");
@@ -593,6 +635,14 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
 
     if ((iobj = lookupKeyReadOrReply(c,key,shared.nokeyerr)) == NULL ||
         checkType(c,iobj,REDIS_ISET)) return;
+        
+    results = avlStab(((avl *) (iobj->ptr))->root, lscore, rscore, NULL);
+    
+    // TODO: Walk through the results and return them. Include intervals when 
+    // 'withintervals' is set.
+    
+    if (results)
+        avlFreeResults(results);
 }
 
 
