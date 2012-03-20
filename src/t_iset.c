@@ -536,23 +536,34 @@ void iaddCommand(redisClient *c) {
 
         ele = c->argv[4+j*3];
 
+        /* XXX
+            Commenting this section out for the time being -
+            we will need to add an element->avlNode hashmap to 
+            quickly check if an element has already been added
+            to the tree and quickly remove said element before
+            updating the elements score.
+           XXX */
         /* If object is found in iobj */
+        /*
         if ((eptr = avlFind(iobj->ptr,ele,&curmin,&curmax)) != NULL) {
             if (curmin != min || curmax != max) {
-                /* remove and re-insert */
-                /* TODO */
+                // remove and re-insert
+                // TODO 
 
                 signalModifiedKey(c->db,key);
                 server.dirty++;
             }
         } else {
+        */
             /* insert into the tree */
-            /* XXX: do we need the cast here? */
+            /* XXX: do we need the cast here? Answer from Ken! I believe so,
+            as robj.ptr is declared as a void, and avlInsert expects an avl pointer */
+            
             avlInsert((avl *) iobj->ptr, min, max, ele);
 
             signalModifiedKey(c->db,key);
             server.dirty++;
-        }
+        //}
 
         added++;
     }
