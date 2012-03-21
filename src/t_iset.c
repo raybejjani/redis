@@ -468,6 +468,7 @@ typedef struct avlResultNode {
 avlResultNode *avlCreateResultNode(avlNode *data) {
 	avlResultNode *arn = zmalloc(sizeof(*arn));
     arn->data = data;
+    arn->next = NULL;
     return arn;
 }
 
@@ -494,8 +495,7 @@ avlResultNode * avlStab(avlNode *node, double min, double max, avlResultNode *re
     // For now we're only going to check for containment.
     if (min >= node->leftScore && max <= node->rightScore) {
         avlResultNode * newResult = avlCreateResultNode(node);
-        if (results)
-            results->next = newResult;
+        newResult->next = results;
         results = newResult;
     }
     
@@ -600,7 +600,7 @@ void iaddCommand(redisClient *c) {
             /* XXX: do we need the cast here? Answer from Ken! I believe so,
             as robj.ptr is declared as a void, and avlInsert expects an avl pointer */
             
-            avlInsert((avl *) iobj->ptr, min, max, ele);
+            avlInsert((avl *) (iobj->ptr), min, max, ele);
 
             signalModifiedKey(c->db,key);
             server.dirty++;
@@ -620,8 +620,8 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
     double lscore, rscore;
     robj *key = c->argv[1];
     robj *iobj;
-    avlResultNode * results;
-    avlResultNode * walker;
+    avlResultNode * resnode;
+    avlResultNode * reswalker;
     void *replylen = NULL;
     unsigned long resultslen = 0;
 
@@ -639,13 +639,13 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
     if ((iobj = lookupKeyReadOrReply(c,key,shared.nokeyerr)) == NULL ||
         checkType(c,iobj,REDIS_ISET)) return;
         
-    results = avlStab(((avl *) (iobj->ptr))->root, lscore, rscore, NULL);
+    resnode = avlStab(((avl *) (iobj->ptr))->root, lscore, rscore, NULL);
     
     // TODO: Walk through the results and return them. Include intervals when 
     // 'withintervals' is set.
     
     /* No results. */
-    if (results == NULL) {
+    if (resnode == NULL) {
         addReply(c, shared.emptymultibulk);
         return;
     }
@@ -654,18 +654,18 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
      * list, so we push this object that will represent the multi-bulk
      * length in the output buffer, and will "fix" it later */
     replylen = addDeferredMultiBulkLength(c);
-    walker = results;
+    reswalker = resnode;
     
-    while (walker) {
+    while (reswalker != NULL) {
         resultslen = resultslen + 1;
-        addReplyBulk(c,walker->data->obj);
-        walker = walker->next;
+        addReplyBulk(c,(reswalker->data)->obj);
+        reswalker = reswalker->next;
     }
     
     setDeferredMultiBulkLength(c, replylen, resultslen);
     
-    if (results)
-        avlFreeResults(results);
+    if (resnode)
+        avlFreeResults(resnode);
 }
 
 
