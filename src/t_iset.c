@@ -71,7 +71,7 @@ int avlNodeCmp(avlNode *a, avlNode *b) {
 	}
 }
 
-void avlLeftRotation(avlNode *locNode) {
+void avlLeftRotation(avl * tree, avlNode *locNode) {
 	avlNode *newRoot = locNode->right;
 	locNode->right = newRoot->left;
 	newRoot->left = locNode;
@@ -85,9 +85,13 @@ void avlLeftRotation(avlNode *locNode) {
 		else
 			newRoot->parent->right = newRoot;
 	}
+	// New root
+	else {
+        tree->root = newRoot;
+	}
 }
 
-void avlRightRotation(avlNode *locNode) {
+void avlRightRotation(avl * tree, avlNode *locNode) {
 	avlNode *newRoot = locNode->left;
 	locNode->left = newRoot->right;
 	newRoot->right = locNode;
@@ -100,6 +104,10 @@ void avlRightRotation(avlNode *locNode) {
 			newRoot->parent->left = newRoot;
 		else
 			newRoot->parent->right = newRoot;
+	}
+	// New root
+	else {
+        tree->root = newRoot;
 	}
 }
 
@@ -155,7 +163,7 @@ void avlUpdateMaxScores(avlNode *locNode) {
 }
 
 
-int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
+int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
 	/* Insert in the left node */
 	if (avlNodeCmp(locNode,insertNode) > -1) {
 		if (!locNode->left) {
@@ -167,7 +175,7 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 		}
 		else {
 			// Left node is occupied, insert it into the subtree
-			if (avlInsertNode(locNode->left,insertNode)) {
+			if (avlInsertNode(tree,locNode->left,insertNode)) {
 				locNode->balance = locNode->balance - 1;
 				if (locNode->balance == 0)
 					return 0;
@@ -177,7 +185,7 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 				// Tree is unbalanced at this point
 				if (locNode->left->balance < 0) {
 					// Left-Left, single right rotation needed
-					avlRightRotation(locNode);
+					avlRightRotation(tree,locNode);
 					locNode->right->balance = 0;
 					locNode->parent->balance = 0;
 					
@@ -186,8 +194,8 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 				}
 				else {
 					// Left-Right, left rotation then right rotation needed
-					avlLeftRotation(locNode->left);
-					avlRightRotation(locNode);
+					avlLeftRotation(tree,locNode->left);
+					avlRightRotation(tree,locNode);
 					avlResetBalance(locNode->parent);
 					
 					locNode->subLeftMax = locNode->parent->subRightMax;
@@ -211,7 +219,7 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 		}
 		else {
 			// Right node is occupied, insert it into the subtree
-			if (avlInsertNode(locNode->right,insertNode)) {
+			if (avlInsertNode(tree,locNode->right,insertNode)) {
 				locNode->balance = locNode->balance - 1;
 				if (locNode->balance == 0)
 					return 0;
@@ -221,7 +229,7 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 				// Tree is unbalanced at this point
 				if (locNode->right->balance > 0) {
 					// Right-Right, single left rotation needed
-					avlLeftRotation(locNode);
+					avlLeftRotation(tree,locNode);
 					locNode->left->balance = 0;
 					locNode->parent->balance = 0;
 					
@@ -230,8 +238,8 @@ int avlInsertNode(avlNode *locNode, avlNode *insertNode) {
 				}
 				else {
 					// Right-Left, right rotation then left rotation needed
-					avlRightRotation(locNode->right);
-					avlLeftRotation(locNode);
+					avlRightRotation(tree,locNode->right);
+					avlLeftRotation(tree,locNode);
 					avlResetBalance(locNode->parent);
 					
 					locNode->subRightMax = locNode->parent->subLeftMax;
@@ -253,7 +261,7 @@ avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj) {
 	if (!tree->root)
 		tree->root = an;
 	else
-		avlInsertNode(tree->root, an);
+		avlInsertNode(tree, tree->root, an);
 	
 	tree->size = tree->size + 1;
 	
@@ -269,7 +277,7 @@ void avlRemoveFromParent(avlNode *locNode, avlNode *replacementNode) {
 }
 
 
-int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
+int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 	int diff = avlNodeCmp(locNode, delNode);
 	int heightDelta;
 	avlNode *replacementNode;
@@ -317,7 +325,7 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 		}
 		
 		// Remove the replacementNode from the tree
-		heightDelta = avlRemoveNode(locNode,replacementNode,0);
+		heightDelta = avlRemoveNode(tree, locNode,replacementNode,0);
 		replacementNode->left = locNode->left;
 		replacementNode->right = locNode->right;
 		locNode->right->parent = replacementNode;
@@ -337,7 +345,7 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 	// The node is in the left subtree
 	else if (diff > 0) {
 		if (locNode->left) {
-			heightDelta = avlRemoveNode(locNode->left,delNode,1);
+			heightDelta = avlRemoveNode(tree, locNode->left,delNode,1);
 			if (heightDelta) {
 				locNode->balance = locNode->balance + 1;
 				if (locNode->balance == 0)
@@ -346,7 +354,7 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 					return 0;
 					
 				if (locNode->right->balance == 1) {
-					avlLeftRotation(locNode);
+					avlLeftRotation(tree,locNode);
 					locNode->parent->balance = 0;
 					locNode->parent->left->balance = 0;
 					
@@ -357,7 +365,7 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 					return -1;
 				}
 				else if (locNode->right->balance == 0){
-					avlLeftRotation(locNode);
+					avlLeftRotation(tree,locNode);
 					locNode->parent->balance = -1;
 					locNode->parent->left->balance = 1;
 					
@@ -367,8 +375,8 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 					
 					return 0;					
 				}
-				avlRightRotation(locNode->right);
-				avlLeftRotation(locNode);
+				avlRightRotation(tree,locNode->right);
+				avlLeftRotation(tree,locNode);
 				avlResetBalance(locNode->parent);
 				
 				locNode->subRightMax = locNode->parent->subLeftMax;
@@ -386,7 +394,7 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 	// The node is in the right subtree
 	else if (diff < 0) {
 		if (locNode->right) {
-			heightDelta = avlRemoveNode(locNode->right,delNode,1);
+			heightDelta = avlRemoveNode(tree, locNode->right,delNode,1);
 			if (heightDelta) {
 				locNode->balance = locNode->balance + 1;
 				if (locNode->balance == 0)
@@ -395,7 +403,7 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 					return 0;
 					
 				if (locNode->left->balance == -1) {
-					avlRightRotation(locNode);
+					avlRightRotation(tree,locNode);
 					locNode->parent->balance = 0;
 					locNode->parent->right->balance = 0;
 					
@@ -406,7 +414,7 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 					return -1;
 				}
 				else if (locNode->left->balance == 0){
-					avlRightRotation(locNode);
+					avlRightRotation(tree,locNode);
 					locNode->parent->balance = 1;
 					locNode->parent->right->balance = -1;
 					
@@ -416,8 +424,8 @@ int avlRemoveNode(avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 					
 					return 0;					
 				}
-				avlLeftRotation(locNode->left);
-				avlRightRotation(locNode);
+				avlLeftRotation(tree,locNode->left);
+				avlRightRotation(tree,locNode);
 				avlResetBalance(locNode->parent);
 				
 				locNode->subLeftMax = locNode->parent->subRightMax;
@@ -439,7 +447,7 @@ int avlRemove(avl *tree, double lscore, double rscore) {
 		return 0;
 	
 	avlNode *delNode = avlCreateNode(lscore, rscore, NULL);
-	int removed = avlRemoveNode(tree->root, delNode, 1);
+	int removed = avlRemoveNode(tree, tree->root, delNode, 1);
 	avlFreeNode(delNode);
 	
 	if (removed)
@@ -611,7 +619,12 @@ void iaddCommand(redisClient *c) {
 
     zfree(mins);
     zfree(maxes);
-    addReplyLongLong(c,added);
+    
+    void *replylen = NULL;
+    replylen = addDeferredMultiBulkLength(c);
+    addReplyBulk(c,ele);
+    setDeferredMultiBulkLength(c, replylen, 1);
+    //addReplyLongLong(c,added);
 }
 
 
@@ -624,6 +637,7 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
     avlResultNode * reswalker;
     void *replylen = NULL;
     unsigned long resultslen = 0;
+    avl * tree;
 
     if (getDoubleFromObjectOrReply(c,lscoreObj,&lscore,NULL) != REDIS_OK) {
         addReplyError(c,"left endpoint is not a float");
@@ -639,6 +653,7 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
     if ((iobj = lookupKeyReadOrReply(c,key,shared.nokeyerr)) == NULL ||
         checkType(c,iobj,REDIS_ISET)) return;
         
+    tree = (avl *) (iobj->ptr);
     resnode = avlStab(((avl *) (iobj->ptr))->root, lscore, rscore, NULL);
     
     // TODO: Walk through the results and return them. Include intervals when 
