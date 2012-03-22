@@ -996,10 +996,10 @@ avlNode *avlCreateNode(double lscore, double rscore, robj *obj);
 void avlFreeNode(avlNode *node);
 void avlFree(avl *tree);
 int avlNodeCmp(avlNode *a, avlNode *b);
-void avlLeftRotation(avlNode *locNode);
-void avlRightRotation(avlNode *locNode);
+void avlLeftRotation(avl * tree, avlNode *locNode);
+void avlRightRotation(avl * tree, avlNode *locNode);
 void avlResetBalance(avlNode *locNode);
-int avlInsertNode(avlNode *locNode, avlNode *insertNode);
+int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode);
 avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj);
 
 /* Sorted sets data type */
