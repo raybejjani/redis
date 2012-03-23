@@ -187,7 +187,8 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
 				if (locNode->left->balance < 0) {
 					// Left-Left, single right rotation needed
 					avlRightRotation(tree,locNode);
-					locNode->right->balance = 0;
+                    if (locNode->right)
+                        locNode->right->balance = 0;
 					locNode->parent->balance = 0;
 					
 					locNode->subLeftMax = locNode->parent->subRightMax;
@@ -221,17 +222,19 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
 		else {
 			// Right node is occupied, insert it into the subtree
 			if (avlInsertNode(tree,locNode->right,insertNode)) {
-				locNode->balance = locNode->balance - 1;
+				locNode->balance = locNode->balance + 1;
 				if (locNode->balance == 0)
 					return 0;
-				else if (locNode->balance == -1)
+				else if (locNode->balance == 1)
 					return 1;
 					
 				// Tree is unbalanced at this point
 				if (locNode->right->balance > 0) {
 					// Right-Right, single left rotation needed
 					avlLeftRotation(tree,locNode);
-					locNode->left->balance = 0;
+                    
+                    if (locNode->left)
+                        locNode->left->balance = 0;
 					locNode->parent->balance = 0;
 					
 					locNode->subRightMax = locNode->parent->subLeftMax;
