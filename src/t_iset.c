@@ -21,6 +21,9 @@ avl *avlCreate(void) {
 	avltree = zmalloc(sizeof(*avltree));
 	avltree->size = 0;
 	avltree->root = NULL;
+    
+    avltree->dict = dictCreate(&isetDictType,NULL);
+    
 	return avltree;
 }
 
@@ -52,6 +55,7 @@ void avlFreeNode(avlNode *node) {
 void avlFree(avl *tree) {
 	if (tree->root != NULL)
 		avlFreeNode(tree->root);
+    dictRelease(tree->dict);
 	zfree(tree);
 }
 
@@ -521,6 +525,7 @@ void iaddCommand(redisClient *c) {
     double *mins, *maxes, curmin = 0.0, curmax = 0.0;
     int j, elements = (c->argc-2)/2;
     int added = 0;
+    avlNode * addedNode;
 
     /* 5, 8, 11... arguments */
     if ((c->argc - 2) % 3) {
@@ -597,7 +602,10 @@ void iaddCommand(redisClient *c) {
             /* XXX: do we need the cast here? Answer from Ken! I believe so,
             as robj.ptr is declared as a void, and avlInsert expects an avl pointer */
             
-            avlInsert((avl *) (iobj->ptr), min, max, ele);
+            addedNode = avlInsert((avl *) (iobj->ptr), min, max, ele);
+            incrRefCount(ele); /* Added to AVL tree. */
+            redisAssertWithInfo(c,NULL,dictAdd(((avl *) (iobj->ptr))->dict,ele,&addedNode->scores) == DICT_OK);
+            incrRefCount(ele); /* Added to dictionary. */
 
             signalModifiedKey(c->db,key);
             server.dirty++;

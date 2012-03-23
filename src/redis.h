@@ -409,6 +409,7 @@ typedef struct avlNode {
 
 typedef struct avl {
 	struct avlNode *root;
+    dict *dict;
 	unsigned long size;
 } avl;
 
@@ -832,6 +833,7 @@ extern struct redisServer server;
 extern struct sharedObjectsStruct shared;
 extern dictType setDictType;
 extern dictType zsetDictType;
+extern dictType isetDictType;
 extern dictType clusterNodesDictType;
 extern dictType dbDictType;
 extern double R_Zero, R_PosInf, R_NegInf, R_Nan;

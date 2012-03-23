@@ -457,6 +457,16 @@ dictType zsetDictType = {
     NULL                       /* val destructor */
 };
 
+/* Interval sets hash (node: an avl tree is used in addition to the hash table) */
+dictType isetDictType = {
+    dictEncObjHash,            /* hash function */
+    NULL,                      /* key dup */
+    NULL,                      /* val dup */
+    dictEncObjKeyCompare,      /* key compare */
+    dictRedisObjectDestructor, /* key destructor */
+    NULL                       /* val destructor */
+};
+
 /* Db->dict, keys are sds strings, vals are Redis objects. */
 dictType dbDictType = {
     dictSdsHash,                /* hash function */
