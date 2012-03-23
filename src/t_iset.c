@@ -26,8 +26,8 @@ avl *avlCreate(void) {
 
 avlNode *avlCreateNode(double lscore, double rscore, robj *obj) {
 	avlNode *an = zmalloc(sizeof(*an));
-	an->leftScore = lscore;
-	an->rightScore = rscore;
+	an->scores[0] = lscore;
+	an->scores[1] = rscore;
 	an->subLeftMax = -INFINITY;
 	an->subRightMax = -INFINITY;
 	an->balance = 0;
@@ -57,14 +57,14 @@ void avlFree(avl *tree) {
 
 
 int avlNodeCmp(avlNode *a, avlNode *b) {
-	if (a->leftScore < b->leftScore)
+	if (a->scores[0] < b->scores[0])
 		return -1;
-	else if (a->leftScore > b->leftScore)
+	else if (a->scores[0] > b->scores[0])
 		return 1;
 	else {
-		if (a->rightScore > b->rightScore)
+		if (a->scores[1] > b->scores[1])
 			return -1;
-		else if (a->rightScore < b->rightScore)
+		else if (a->scores[1] < b->scores[1])
 			return 1;
 		else
 			return 0;
@@ -135,7 +135,7 @@ void avlUpdateMaxScores(avlNode *locNode) {
 	
 	while (locNode) {
 		if (locNode->left) {
-			oldNodeMax = locNode->left->rightScore;
+			oldNodeMax = locNode->left->scores[1];
 			oldNodeMax = (oldNodeMax > locNode->left->subLeftMax) ? oldNodeMax : locNode->left->subLeftMax;
 			oldNodeMax = (oldNodeMax > locNode->left->subRightMax) ? oldNodeMax : locNode->left->subRightMax;
 			if (locNode->subLeftMax < oldNodeMax)
@@ -147,7 +147,7 @@ void avlUpdateMaxScores(avlNode *locNode) {
 			locNode->subLeftMax = -INFINITY;
 		}
 		if (locNode->right) {
-			oldNodeMax = locNode->right->rightScore;
+			oldNodeMax = locNode->right->scores[1];
 			oldNodeMax = (oldNodeMax > locNode->right->subLeftMax) ? oldNodeMax : locNode->right->subLeftMax;
 			oldNodeMax = (oldNodeMax > locNode->right->subRightMax) ? oldNodeMax : locNode->right->subRightMax;
 			if (locNode->subRightMax < oldNodeMax)
@@ -492,7 +492,7 @@ avlResultNode * avlStab(avlNode *node, double min, double max, avlResultNode *re
     
     // If the minimum endpoint of the interval falls to the right of the current node's interval and
     // any sub-tree intervals, there cannot be an interval match
-    if (min > node->subRightMax && min > node->subLeftMax && min > node->rightScore)
+    if (min > node->subRightMax && min > node->subLeftMax && min > node->scores[1])
         return results;
         
     // Search the node's left subtree
@@ -501,7 +501,7 @@ avlResultNode * avlStab(avlNode *node, double min, double max, avlResultNode *re
         
     // Check to see if this node overlaps. 
     // For now we're only going to check for containment.
-    if (min >= node->leftScore && max <= node->rightScore) {
+    if (min >= node->scores[0] && max <= node->scores[1]) {
         avlResultNode * newResult = avlCreateResultNode(node);
         newResult->next = results;
         results = newResult;
@@ -509,7 +509,7 @@ avlResultNode * avlStab(avlNode *node, double min, double max, avlResultNode *re
     
     // If the max endpoint of the interval falls to the left of the start of the current node's
     // interval, there cannot be an interval match to the right of this node
-    if (max < node->leftScore)
+    if (max < node->scores[0])
         return results;
         
     // Search the node's right subtree

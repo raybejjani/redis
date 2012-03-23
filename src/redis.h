@@ -401,7 +401,7 @@ typedef struct zset {
 /* ISET specialized AVL structures */
 typedef struct avlNode {
 	robj *obj;
-	double leftScore, rightScore;
+	double scores[2];
 	double subLeftMax, subRightMax;
 	char balance;
 	struct avlNode *left, *right, *parent;
