@@ -45,9 +45,9 @@ avlNode *avlCreateNode(double lscore, double rscore, robj *obj) {
 void avlFreeNode(avlNode *node) {
 	if (node->obj)
 		decrRefCount(node->obj);
-	if (!node->left)
+	if (node->left)
 		avlFreeNode(node->left);
-	if (!node->right)
+	if (node->right)
 		avlFreeNode(node->right);
 	zfree(node);
 }
@@ -268,10 +268,12 @@ avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj) {
 }
 
 void avlRemoveFromParent(avlNode *locNode, avlNode *replacementNode) {
-	if (locNode->parent->left == locNode)
-		locNode->parent->left = replacementNode;
-	else
-		locNode->parent->right = replacementNode;
+    if (locNode->parent) {
+        if (locNode->parent->left == locNode)
+            locNode->parent->left = replacementNode;
+        else
+            locNode->parent->right = replacementNode;
+    }
 }
 
 int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeMem) {
