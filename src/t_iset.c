@@ -55,7 +55,6 @@ void avlFree(avl *tree) {
 	zfree(tree);
 }
 
-
 int avlNodeCmp(avlNode *a, avlNode *b) {
 	if (a->scores[0] < b->scores[0])
 		return -1;
@@ -129,7 +128,6 @@ void avlResetBalance(avlNode *locNode) {
 	locNode->balance = 0;
 }
 
-
 void avlUpdateMaxScores(avlNode *locNode) {
 	double oldNodeMax;
 	
@@ -161,7 +159,6 @@ void avlUpdateMaxScores(avlNode *locNode) {
 		locNode = locNode->parent;
 	}
 }
-
 
 int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
 	/* Insert in the left node */
@@ -254,7 +251,6 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
 	}
 }
 
-
 avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj) {
 	avlNode *an = avlCreateNode(lscore, rscore, obj);
 	
@@ -268,14 +264,12 @@ avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj) {
 	return an;
 }
 
-
 void avlRemoveFromParent(avlNode *locNode, avlNode *replacementNode) {
 	if (locNode->parent->left == locNode)
 		locNode->parent->left = replacementNode;
 	else
 		locNode->parent->right = replacementNode;
 }
-
 
 int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeMem) {
 	int diff = avlNodeCmp(locNode, delNode);
@@ -441,7 +435,6 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
 	return 0;
 }
 
-
 int avlRemove(avl *tree, double lscore, double rscore) {
 	if (!tree->root)
 		return 0;
@@ -458,7 +451,6 @@ int avlRemove(avl *tree, double lscore, double rscore) {
 		
 	return removed;
 }
-
 
 /*
 This structure is a simple linked list that is built during the 
@@ -480,13 +472,11 @@ avlResultNode *avlCreateResultNode(avlNode *data) {
     return arn;
 }
 
-
 void avlFreeResults(avlResultNode *node) {
     if (node->next)
         avlFreeResults(node->next);
     zfree(node);
 }
-
 
 avlResultNode * avlStab(avlNode *node, double min, double max, avlResultNode *results) {
     
@@ -518,7 +508,6 @@ avlResultNode * avlStab(avlNode *node, double min, double max, avlResultNode *re
         
     return results;
 }
-
 
 /*-----------------------------------------------------------------------------
  * Interval set commands 
@@ -623,7 +612,6 @@ void iaddCommand(redisClient *c) {
     addReplyLongLong(c,added);
 }
 
-
 /* This command implements ISTAB, ISTABINTERVAL. */
 void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int withintervals) {
     double lscore, rscore;
@@ -686,7 +674,6 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
         avlFreeResults(resnode);
 }
 
-
 void istabCommand(redisClient *c) {
     int withintervals = 0;
     if (c->argc > 3) {
@@ -697,7 +684,6 @@ void istabCommand(redisClient *c) {
     }
     genericStabCommand(c, c->argv[2], c->argv[2], withintervals);
 }
-
 
 void istabIntervalCommand(redisClient *c) {
     int withintervals = 0;
