@@ -522,11 +522,14 @@ void iaddCommand(redisClient *c) {
     robj *key = c->argv[1];
     robj *iobj;
     robj *ele;
+    robj *curobj;
+    double * curscores;
     double min = 0, max = 0;
-    double *mins, *maxes, curmin = 0.0, curmax = 0.0;
+    double *mins, *maxes;
     int j, elements = (c->argc-2)/2;
     int added = 0;
     avlNode * addedNode;
+    dictEntry *de;
 
     /* 5, 8, 11... arguments */
     if ((c->argc - 2) % 3) {
@@ -578,7 +581,8 @@ void iaddCommand(redisClient *c) {
 
         unsigned char* eptr;
 
-        ele = c->argv[4+j*3];
+        ele = c->argv[4+j*3] = tryObjectEncoding(c->argv[4+j*3]);
+        de = dictFind(((avl *) (iobj->ptr))->dict,ele);
 
         /* XXX
             Commenting this section out for the time being -
@@ -588,21 +592,26 @@ void iaddCommand(redisClient *c) {
             updating the elements score.
            XXX */
         /* If object is found in iobj */
-        /*
-        if ((eptr = avlFind(iobj->ptr,ele,&curmin,&curmax)) != NULL) {
-            if (curmin != min || curmax != max) {
+        
+        if (de != NULL) {
+            curobj = dictGetKey(de);
+            curscores = (double *) dictGetVal(de);
+            
+            if (curscores[0] != min || curscores[1] != max) {
                 // remove and re-insert
                 // TODO 
+                avlRemove((avl *) (iobj->ptr), curscores[0], curscores[1]);
+                addedNode = avlInsert((avl *) (iobj->ptr), min, max, ele);
+                incrRefCount(ele); /* Re-added to AVL tree. */
+                dictGetVal(de) = addedNode->scores; /* Update scores ptr. */
 
                 signalModifiedKey(c->db,key);
                 server.dirty++;
             }
         } else {
-        */
             /* insert into the tree */
             /* XXX: do we need the cast here? Answer from Ken! I believe so,
             as robj.ptr is declared as a void, and avlInsert expects an avl pointer */
-            
             addedNode = avlInsert((avl *) (iobj->ptr), min, max, ele);
             incrRefCount(ele); /* Added to AVL tree. */
             redisAssertWithInfo(c,NULL,dictAdd(((avl *) (iobj->ptr))->dict,ele,&addedNode->scores) == DICT_OK);
@@ -610,7 +619,7 @@ void iaddCommand(redisClient *c) {
 
             signalModifiedKey(c->db,key);
             server.dirty++;
-        //}
+        }
 
         added++;
     }
