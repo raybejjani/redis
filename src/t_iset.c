@@ -620,11 +620,7 @@ void iaddCommand(redisClient *c) {
     zfree(mins);
     zfree(maxes);
     
-    void *replylen = NULL;
-    replylen = addDeferredMultiBulkLength(c);
-    addReplyBulk(c,ele);
-    setDeferredMultiBulkLength(c, replylen, 1);
-    //addReplyLongLong(c,added);
+    addReplyLongLong(c,added);
 }
 
 
@@ -672,10 +668,17 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
     reswalker = resnode;
     
     while (reswalker != NULL) {
-        resultslen = resultslen + 1;
+        resultslen++;
         addReplyBulk(c,(reswalker->data)->obj);
+        if (withintervals) {
+            addReplyDouble(c,(reswalker->data)->scores[0]);
+            addReplyDouble(c,(reswalker->data)->scores[1]);
+        }
         reswalker = reswalker->next;
     }
+    
+    if (withintervals)
+        resultslen *= 3;
     
     setDeferredMultiBulkLength(c, replylen, resultslen);
     
