@@ -4,6 +4,6 @@ start_server {tags {"iset"}} {
         r iadd itmp 10 20 x
         r iadd itmp 12 22 y
         r iadd itmp 15 25 z
-        assert_equal {x y z} [r istab itmp 18]
+        assert_equal_elements {x y z} [r istab itmp 18]
     }
 }
