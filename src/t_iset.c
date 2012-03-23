@@ -142,8 +142,6 @@ void avlUpdateMaxScores(avlNode *locNode) {
 			oldNodeMax = (oldNodeMax > locNode->left->subRightMax) ? oldNodeMax : locNode->left->subRightMax;
 			if (locNode->subLeftMax < oldNodeMax)
 				locNode->subLeftMax = oldNodeMax;
-			else
-				return;
 		}
 		else {
 			locNode->subLeftMax = -INFINITY;
@@ -154,8 +152,6 @@ void avlUpdateMaxScores(avlNode *locNode) {
 			oldNodeMax = (oldNodeMax > locNode->right->subRightMax) ? oldNodeMax : locNode->right->subRightMax;
 			if (locNode->subRightMax < oldNodeMax)
 				locNode->subRightMax = oldNodeMax;
-			else
-				return;
 		}
 		else {
 			locNode->subRightMax = -INFINITY;
