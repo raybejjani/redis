@@ -579,8 +579,6 @@ void iaddCommand(redisClient *c) {
         min = mins[j];
         max = maxes[j];
 
-        unsigned char* eptr;
-
         ele = c->argv[4+j*3] = tryObjectEncoding(c->argv[4+j*3]);
         de = dictFind(((avl *) (iobj->ptr))->dict,ele);
 
