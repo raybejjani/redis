@@ -629,8 +629,9 @@ void iaddCommand(redisClient *c) {
 }
 
 /* This command implements ISTAB, ISTABINTERVAL. */
-void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int withintervals) {
+void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int intervalstab) {
     double lscore, rscore;
+    int withintervals = 0;
     robj *key = c->argv[1];
     robj *iobj;
     avlResultNode * resnode;
@@ -638,6 +639,22 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
     void *replylen = NULL;
     unsigned long resultslen = 0;
     avl * tree;
+
+    if (intervalstab) {
+        if (c->argc > 4) {
+            if (!strcasecmp(c->argv[4]->ptr,"withintervals"))
+                withintervals = 1;
+            else
+                addReply(c,shared.syntaxerr);
+        }
+    } else {
+        if (c->argc > 3) {
+            if (!strcasecmp(c->argv[4]->ptr,"withintervals"))
+                withintervals = 1;
+            else
+                addReply(c,shared.syntaxerr);
+        }
+    }
 
     if (getDoubleFromObjectOrReply(c,lscoreObj,&lscore,NULL) != REDIS_OK) {
         addReplyError(c,"left endpoint is not a float");
@@ -648,7 +665,6 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
         addReplyError(c,"right endpoint is not a float");
         return;
     }
-
 
     if ((iobj = lookupKeyReadOrReply(c,key,shared.nokeyerr)) == NULL ||
         checkType(c,iobj,REDIS_ISET)) return;
@@ -691,23 +707,9 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int wi
 }
 
 void istabCommand(redisClient *c) {
-    int withintervals = 0;
-    if (c->argc > 3) {
-        if (!strcasecmp(c->argv[3]->ptr,"withintervals"))
-            withintervals = 1;
-        else
-            addReply(c,shared.syntaxerr);
-    }
-    genericStabCommand(c, c->argv[2], c->argv[2], withintervals);
+    genericStabCommand(c,c->argv[2],c->argv[2],0);
 }
 
 void istabIntervalCommand(redisClient *c) {
-    int withintervals = 0;
-    if (c->argc > 4) {
-        if (!strcasecmp(c->argv[4]->ptr,"withintervals"))
-            withintervals = 1;
-        else
-            addReply(c,shared.syntaxerr);
-    }
-    genericStabCommand(c, c->argv[2], c->argv[3], withintervals);
+    genericStabCommand(c,c->argv[2],c->argv[3],1);
 }
