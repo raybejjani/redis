@@ -24,4 +24,12 @@ start_server {tags {"iset"}} {
         assert_equal_elements {x y} [r istab itmp 1.25]
         assert_equal {} [r istab itmp 2.1111]
     }
+
+    test "ISET score update" {
+        r del itmp
+        r iadd itmp 10 20 x
+        r iadd itmp 15 25 x
+        assert_equal {x} [r istab itmp 24]
+        assert_equal {} [r istab itmp 14]
+    }
 }
