@@ -45,4 +45,11 @@ start_server {tags {"iset"}} {
         assert_error "*not*float*" {r iadd itmp banana cream pie}
         assert_error "*not*float*" {r iadd itmp 2 cream pies}
     }
+
+    test "ISET variadic IADD" {
+        r del itmp
+        r iadd itmp 10 20 x 12 22 y 15 25 z
+        assert_equal_elements {x y z} [r istab itmp 18]
+        assert_equal_elements {y z} [r istab itmp 21]
+    }
 }
