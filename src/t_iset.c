@@ -672,9 +672,6 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int in
     tree = (avl *) (iobj->ptr);
     resnode = avlStab(((avl *) (iobj->ptr))->root, lscore, rscore, NULL);
     
-    // TODO: Walk through the results and return them. Include intervals when 
-    // 'withintervals' is set.
-    
     /* No results. */
     if (resnode == NULL) {
         addReply(c, shared.emptymultibulk);
