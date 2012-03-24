@@ -602,6 +602,7 @@ void iaddCommand(redisClient *c) {
                 addedNode = avlInsert((avl *) (iobj->ptr), min, max, ele);
                 incrRefCount(ele); /* Re-added to AVL tree. */
                 dictGetVal(de) = addedNode->scores; /* Update scores ptr. */
+                added++;
 
                 signalModifiedKey(c->db,key);
                 server.dirty++;
@@ -613,13 +614,12 @@ void iaddCommand(redisClient *c) {
             addedNode = avlInsert((avl *) (iobj->ptr), min, max, ele);
             incrRefCount(ele); /* Added to AVL tree. */
             redisAssertWithInfo(c,NULL,dictAdd(((avl *) (iobj->ptr))->dict,ele,&addedNode->scores) == DICT_OK);
-            incrRefCount(ele); /* Added to dictionary. */
+            added++;
 
+            incrRefCount(ele); /* Added to dictionary. */
             signalModifiedKey(c->db,key);
             server.dirty++;
         }
-
-        added++;
     }
 
     zfree(mins);

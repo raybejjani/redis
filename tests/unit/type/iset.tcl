@@ -58,8 +58,21 @@ start_server {tags {"iset"}} {
         r iadd itmp 10 20 x
     } {1}
 
+    test "ISET IADD returns correct zero" {
+        r del itmp
+        r iadd itmp 10 20 x
+        r iadd itmp 10 20 x
+    } {0}
+
     test "ISET variadic IADD returns correct value" {
         r del itmp
         r iadd itmp 10 20 x 12 22 y 15 25 z
     } {3}
+
+    test "ISET IADD returns correct value after insert" {
+        r del itmp
+        r iadd itmp 10 20 x
+        r iadd itmp 12 22 y
+        r iadd itmp 10 20 x 12 22 y 15 25 z
+    } {1}
 }
