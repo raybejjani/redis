@@ -52,4 +52,14 @@ start_server {tags {"iset"}} {
         assert_equal_elements {x y z} [r istab itmp 18]
         assert_equal_elements {y z} [r istab itmp 21]
     }
+
+    test "ISET IADD returns correct value" {
+        r del itmp
+        r iadd itmp 10 20 x
+    } {1}
+
+    test "ISET variadic IADD returns correct value" {
+        r del itmp
+        r iadd itmp 10 20 x 12 22 y 15 25 z
+    } {3}
 }
