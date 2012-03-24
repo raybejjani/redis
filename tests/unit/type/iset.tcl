@@ -55,24 +55,24 @@ start_server {tags {"iset"}} {
 
     test "ISET IADD returns correct value" {
         r del itmp
-        r iadd itmp 10 20 x
-    } {1}
+        assert_equal {1} [r iadd itmp 10 20 x]
+    }
 
     test "ISET IADD returns correct zero" {
         r del itmp
         r iadd itmp 10 20 x
-        r iadd itmp 10 20 x
-    } {0}
+        assert_equal {0} [r iadd itmp 10 20 x]
+    }
 
     test "ISET variadic IADD returns correct value" {
         r del itmp
-        r iadd itmp 10 20 x 12 22 y 15 25 z
-    } {3}
+        assert_equal {3} [r iadd itmp 10 20 x 12 22 y 15 25 z]
+    }
 
     test "ISET IADD returns correct value after insert" {
         r del itmp
         r iadd itmp 10 20 x
         r iadd itmp 12 22 y
-        r iadd itmp 10 20 x 12 22 y 15 25 z
-    } {1}
+        assert_equal {1} [r iadd itmp 10 20 x 12 22 y 15 25 z]
+    }
 }
