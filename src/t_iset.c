@@ -533,7 +533,7 @@ void iaddCommand(redisClient *c) {
 
     /* 5, 8, 11... arguments */
     if ((c->argc - 2) % 3) {
-        addReply(c,shared.syntaxerr);
+        addReplyError(c,"wrong number of arguments for 'iadd' command");
         return;
     }
 

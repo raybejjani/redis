@@ -32,4 +32,17 @@ start_server {tags {"iset"}} {
         assert_equal {x} [r istab itmp 24]
         assert_equal {} [r istab itmp 14]
     }
+
+    test "ISET wrong number of arguments" {
+        assert_error "*wrong*number*arguments*" {r iadd itmp 2}
+        assert_error "*wrong*number*arguments*" {r iadd itmp 2 3}
+        assert_error "*wrong*number*arguments*" {r iadd itmp 2 3 too 2}
+        assert_error "*wrong*number*arguments*" {r iadd itmp 2 3 too 2 3}
+        assert_error "*wrong*number*arguments*" {r iadd itmp 2 3 too 2 3 many more}
+    }
+
+    test "ISET Can't update a key without floats" {
+        assert_error "*not*float*" {r iadd itmp banana cream pie}
+        assert_error "*not*float*" {r iadd itmp 2 cream pies}
+    }
 }
