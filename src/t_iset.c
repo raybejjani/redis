@@ -526,7 +526,7 @@ void iaddCommand(redisClient *c) {
     double * curscores;
     double min = 0, max = 0;
     double *mins, *maxes;
-    int j, elements = (c->argc-2)/2;
+    int j, elements = (c->argc-2)/3;
     int added = 0;
     avlNode * addedNode;
     dictEntry *de;
