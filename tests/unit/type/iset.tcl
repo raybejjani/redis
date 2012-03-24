@@ -14,4 +14,14 @@ start_server {tags {"iset"}} {
         assert_equal {x} [r istab itmp 10]
         assert_equal {x} [r istab itmp 20]
     }
+
+    test "ISET floating point stab" {
+        r del itmp
+        r iadd itmp 1 1.5 x
+        r iadd itmp 1.25 2 y
+        assert_equal {} [r istab itmp 0.99999]
+        assert_equal {x} [r istab itmp 1.2]
+        assert_equal_elements {x y} [r istab itmp 1.25]
+        assert_equal {} [r istab itmp 2.1111]
+    }
 }
