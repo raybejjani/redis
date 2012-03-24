@@ -75,4 +75,12 @@ start_server {tags {"iset"}} {
         r iadd itmp 12 22 y
         assert_equal {1} [r iadd itmp 10 20 x 12 22 y 15 25 z]
     }
+
+    test "ISET adding multiple keys to a node" {
+        r del itmp
+        r iadd itmp 1 2 x
+        r iadd itmp 1 2 y
+        r irem x
+        assert_equal {y} [r istab itmp 1.5]
+    }
 }
