@@ -404,7 +404,7 @@ typedef struct avlNode {
 	double scores[2];
 	double subLeftMax, subRightMax;
 	char balance;
-	struct avlNode *left, *right, *parent;
+	struct avlNode *left, *right, *parent, *next;
 } avlNode;
 
 typedef struct avl {
