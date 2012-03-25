@@ -644,25 +644,27 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int in
         if (c->argc > 4) {
             if (!strcasecmp(c->argv[4]->ptr,"withintervals"))
                 withintervals = 1;
-            else
+            else {
                 addReply(c,shared.syntaxerr);
+                return;
+            }
         }
     } else {
         if (c->argc > 3) {
             if (!strcasecmp(c->argv[4]->ptr,"withintervals"))
                 withintervals = 1;
-            else
+            else {
                 addReply(c,shared.syntaxerr);
+                return;
+            }
         }
     }
 
     if (getDoubleFromObjectOrReply(c,lscoreObj,&lscore,NULL) != REDIS_OK) {
-        addReplyError(c,"left endpoint is not a float");
         return;
     }
     
     if (getDoubleFromObjectOrReply(c,rscoreObj,&rscore,NULL) != REDIS_OK) {
-        addReplyError(c,"right endpoint is not a float");
         return;
     }
 
