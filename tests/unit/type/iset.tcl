@@ -76,11 +76,46 @@ start_server {tags {"iset"}} {
         assert_equal {1} [r iadd itmp 10 20 x 12 22 y 15 25 z]
     }
 
+    test "ISET ISTAB basics" {
+        r del itmp
+        r iadd itmp 1 10 a
+        r iadd itmp 3 10 b
+        r iadd itmp 5 10 c
+        r iadd itmp 7 12 d
+
+        assert_equal_elements {a b c d} [r istab itmp 8]
+        assert_equal_elements {a b c} [r istab itmp 6]
+        assert_equal_elements {a b} [r istab itmp 4]
+        assert_equal_elements {a} [r istab itmp 2]
+        assert_equal_elements {d} [r istab itmp 11]
+        assert_equal_elements {} [r istab itmp 0]
+        assert_equal_elements {} [r istab itmp 13]
+
+        #this doesn't really work, because assert_equal_elements
+        #will verify {1 2 a 3 4 b} and {3 4 a 1 2 b} as the same set.
+        #TODO: figure out a better assert
+        #assert_equal_elements {}
+    }
+
+    test "ISET ISTAB weird scenario I hit that caused a bug" {
+        r del itmp
+        r iadd itmp 1 10 x
+        assert_error "*not*valid*float*" {r istab x withintervals}
+        assert_equal {x} [r istab itmp 5]
+    }
+
     test "ISET adding multiple keys to a node" {
         r del itmp
-        r iadd itmp 1 2 x
-        r iadd itmp 1 2 y
+        r iadd itmp 1 3 x
+        r iadd itmp 1 3 y
+        assert_equal {x y} [r istab itmp 2]
+    }
+
+    test "ISET adding multiple keys to a node" {
+        r del itmp
+        r iadd itmp 1 3 x
+        r iadd itmp 1 3 y
         r irem x
-        assert_equal {y} [r istab itmp 1.5]
+        assert_equal {y} [r istab itmp 2]
     }
 }
