@@ -37,6 +37,7 @@ avlNode *avlCreateNode(double lscore, double rscore, robj *obj) {
 	an->left = NULL;
 	an->right = NULL;
 	an->parent = NULL;
+    an->next = NULL;
 	an->obj = obj;
 	
 	return an;
@@ -161,8 +162,10 @@ void avlUpdateMaxScores(avlNode *locNode) {
 }
 
 int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
+    int diff = avlNodeCmp(locNode, insertNode);
+    
 	/* Insert in the left node */
-	if (avlNodeCmp(locNode,insertNode) > -1) {
+	if (diff > 0) {
 		if (!locNode->left) {
 			locNode->left = insertNode;
 			insertNode->parent = locNode;
@@ -207,7 +210,7 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
 		}
 	}
 	/* Insert in the right node */
-	else {
+	else if (diff < 0) {
 		if (!locNode->right) {
 			locNode->right = insertNode;
 			insertNode->parent = locNode;
@@ -252,6 +255,15 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
 			return 0;
 		}
 	}
+    // These nodes have the same range. We're going to assume that the robj hasn't been
+    // added before to this range, as the caller to avlInsert should check this
+    else {
+        avlNode * tail = locNode;
+        while (tail->next != NULL)
+            tail = tail->next;
+        tail->next = insertNode;
+        return 0;
+    }
 }
 
 avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj) {
@@ -267,12 +279,15 @@ avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj) {
 	return an;
 }
 
-void avlRemoveFromParent(avlNode *locNode, avlNode *replacementNode) {
+void avlRemoveFromParent(avl * tree, avlNode *locNode, avlNode *replacementNode) {
     if (locNode->parent) {
         if (locNode->parent->left == locNode)
             locNode->parent->left = replacementNode;
         else
             locNode->parent->right = replacementNode;
+    }
+    else {
+        tree->root = replacementNode;
     }
 }
 
@@ -283,62 +298,109 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
 		
 	// This is the node we want removed
 	if (diff == 0) {	
-		// Remove if leaf node or replace with child if only one child		
-		if (!locNode->left) {
-			if (!locNode->right) {
-				avlRemoveFromParent(locNode,NULL);
-				if (locNode->parent)
-					avlUpdateMaxScores(locNode->parent);
-				if (freeNodeMem)
-					avlFreeNode(locNode);
-				return -1;
-			}
-			avlRemoveFromParent(locNode,locNode->right);
-			if (locNode->parent)
-				avlUpdateMaxScores(locNode->parent);
-			if (freeNodeMem)
-				avlFreeNode(locNode);
-			return -1;
-		}
-		if (!locNode->right) {
-			avlRemoveFromParent(locNode,locNode->left);
-			if (locNode->parent)
-				avlUpdateMaxScores(locNode->parent);
-			if (freeNodeMem)
-				avlFreeNode(locNode);
-			return -1;
-		}
-		
-		// If two children, replace from subtree
-		if (locNode->balance < 0) {
-			// Replace with the node's in-order predecessor
-			replacementNode = locNode->left;
-			while (replacementNode->right)
-				replacementNode = replacementNode->right;
-		}
-		else {
-			// Replace with the node's in-order successor
-			replacementNode = locNode->right;
-			while (replacementNode->left)
-				replacementNode = replacementNode->left;
-		}
-		
-		// Remove the replacementNode from the tree
-		heightDelta = avlRemoveNode(tree, locNode,replacementNode,0);
-		replacementNode->left = locNode->left;
-		replacementNode->right = locNode->right;
-		locNode->right->parent = replacementNode;
-		locNode->left->parent = replacementNode;
-		replacementNode->balance = locNode->balance;
-		if (locNode->parent)
-			avlUpdateMaxScores(locNode->parent);
-		if (freeNodeMem)
-			avlFreeNode(locNode);
-			
-		if (replacementNode->balance == 0)
-			return heightDelta;
-			
-		return 0;
+        // First check to see if there are more than one element being stored here.
+        // If so, find the element, remove it, and update the pointers appropriately.
+        // If not, we can assume that this element is the one desired to be removed,
+        // as the caller to avlRemoveNode should check the dict first to ensure the 
+        // obj exists at this point
+        if (locNode->next && freeNodeMem) {
+            avlNode *removeNode = locNode;
+            avlNode *prevNode = NULL;
+            
+            // Find the node where the node obj data matches the delNode obj data
+            while (sdscmp(removeNode->obj->ptr,delNode->obj->ptr) != 0) {
+                prevNode = removeNode;
+                removeNode = removeNode->next;
+            }
+            // If the node to be removed is the head, we need to update the locNode
+            if (removeNode == locNode) {
+                locNode->next->parent = locNode->parent;
+                locNode->next->left = locNode->left;
+                locNode->next->right = locNode->right;
+                locNode->next->balance = locNode->balance;
+                locNode->next->subLeftMax = locNode->subLeftMax;
+                locNode->next->subRightMax = locNode->subRightMax;
+                
+                // Update the parent and children
+                avlRemoveFromParent(tree,locNode,locNode->next);
+                if (locNode->left)
+                    locNode->left->parent = locNode->next;
+                if (locNode->right)
+                    locNode->right->parent = locNode->next;
+                
+                locNode->right = NULL;
+                locNode->left = NULL;
+                avlFreeNode(locNode);
+                return 0;
+            }
+            else {
+                prevNode->next = removeNode->next;
+                avlFreeNode(removeNode);
+                return 0;
+            }
+        }
+        else {
+            // Remove if leaf node or replace with child if only one child		
+            if (!locNode->left) {
+                if (!locNode->right) {
+                    avlRemoveFromParent(tree,locNode,NULL);
+                    if (locNode->parent)
+                        avlUpdateMaxScores(locNode->parent);
+                    if (freeNodeMem)
+                        avlFreeNode(locNode);
+                    return -1;
+                }
+                avlRemoveFromParent(tree,locNode,locNode->right);
+                if (locNode->parent)
+                    avlUpdateMaxScores(locNode->parent);
+                locNode->right = NULL;
+                if (freeNodeMem)
+                    avlFreeNode(locNode);
+                return -1;
+            }
+            if (!locNode->right) {
+                avlRemoveFromParent(tree,locNode,locNode->left);
+                if (locNode->parent)
+                    avlUpdateMaxScores(locNode->parent);
+                locNode->left = NULL;
+                if (freeNodeMem)
+                    avlFreeNode(locNode);
+                return -1;
+            }
+            
+            // If two children, replace from subtree
+            if (locNode->balance < 0) {
+                // Replace with the node's in-order predecessor
+                replacementNode = locNode->left;
+                while (replacementNode->right)
+                    replacementNode = replacementNode->right;
+            }
+            else {
+                // Replace with the node's in-order successor
+                replacementNode = locNode->right;
+                while (replacementNode->left)
+                    replacementNode = replacementNode->left;
+            }
+            
+            // Remove the replacementNode from the tree
+            heightDelta = avlRemoveNode(tree, locNode,replacementNode,0);
+            replacementNode->left = locNode->left;
+            replacementNode->right = locNode->right;
+            locNode->right->parent = replacementNode;
+            locNode->left->parent = replacementNode;
+            replacementNode->balance = locNode->balance;
+            if (locNode->parent)
+                avlUpdateMaxScores(locNode->parent);
+            locNode->left = NULL;
+            locNode->right = NULL;
+            if (freeNodeMem)
+                avlFreeNode(locNode);
+                
+            if (replacementNode->balance == 0)
+                return heightDelta;
+                
+            return 0;
+        }
 	}
 	
 	// The node is in the left subtree
@@ -395,10 +457,10 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
 		if (locNode->right) {
 			heightDelta = avlRemoveNode(tree, locNode->right,delNode,1);
 			if (heightDelta) {
-				locNode->balance = locNode->balance + 1;
+				locNode->balance = locNode->balance - 1;
 				if (locNode->balance == 0)
-					return -1;
-				else if (locNode->balance == 1)
+					return 1;
+				else if (locNode->balance == -1)
 					return 0;
 					
 				if (locNode->left->balance == -1) {
@@ -440,13 +502,12 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
 	return 0;
 }
 
-int avlRemove(avl *tree, double lscore, double rscore) {
+int avlRemove(avl *tree, double lscore, double rscore, robj * obj) {
 	if (!tree->root)
 		return 0;
 	
-	avlNode *delNode = avlCreateNode(lscore, rscore, NULL);
+	avlNode *delNode = avlCreateNode(lscore, rscore, obj);
 	int removed = avlRemoveNode(tree, tree->root, delNode, 1);
-	avlFreeNode(delNode);
 	
 	if (removed)
 		tree->size = tree->size - 1;
@@ -598,7 +659,7 @@ void iaddCommand(redisClient *c) {
             if (curscores[0] != min || curscores[1] != max) {
                 // remove and re-insert
                 // TODO 
-                avlRemove((avl *) (iobj->ptr), curscores[0], curscores[1]);
+                avlRemove((avl *) (iobj->ptr), curscores[0], curscores[1], ele);
                 addedNode = avlInsert((avl *) (iobj->ptr), min, max, ele);
                 incrRefCount(ele); /* Re-added to AVL tree. */
                 dictGetVal(de) = addedNode->scores; /* Update scores ptr. */
@@ -636,6 +697,7 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int in
     robj *iobj;
     avlResultNode * resnode;
     avlResultNode * reswalker;
+    avlNode * nodewalker;
     void *replylen = NULL;
     unsigned long resultslen = 0;
     avl * tree;
@@ -686,12 +748,17 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int in
     replylen = addDeferredMultiBulkLength(c);
     reswalker = resnode;
     
+    
     while (reswalker != NULL) {
-        resultslen++;
-        addReplyBulk(c,(reswalker->data)->obj);
-        if (withintervals) {
-            addReplyDouble(c,(reswalker->data)->scores[0]);
-            addReplyDouble(c,(reswalker->data)->scores[1]);
+        nodewalker = reswalker->data;
+        while (nodewalker != NULL) {
+            resultslen++;
+            addReplyBulk(c,nodewalker->obj);
+            if (withintervals) {
+                addReplyDouble(c,nodewalker->scores[0]);
+                addReplyDouble(c,nodewalker->scores[1]);
+            }
+            nodewalker = nodewalker->next;
         }
         reswalker = reswalker->next;
     }
