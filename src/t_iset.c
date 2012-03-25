@@ -779,3 +779,46 @@ void istabCommand(redisClient *c) {
 void istabIntervalCommand(redisClient *c) {
     genericStabCommand(c,c->argv[2],c->argv[3],1);
 }
+
+void iremCommand(redisClient *c) {
+    robj *key = c->argv[1];
+    robj *iobj;
+    robj *ele;
+    double *curscores;
+    int deleted = 0, j;
+    dictEntry *de;
+    avl *tree;
+
+    if ((iobj = lookupKeyWriteOrReply(c,key,shared.czero)) == NULL ||
+        checkType(c,iobj,REDIS_ISET)) return;
+
+    tree = (avl *) iobj->ptr;
+
+    for (j = 2; j < c->argc; j++) {
+        ele = c->argv[j] = tryObjectEncoding(c->argv[j]);
+        de = dictFind(tree->dict,ele);
+
+        if (de != NULL) {
+            deleted++;
+
+            /* delete from the tree */
+            curscores = (double *) dictGetVal(de);
+            redisAssertWithInfo(c,c->argv[j],avlRemove(tree,curscores[0],curscores[1],ele));
+
+            /* delete from the hash table */
+            dictDelete(tree->dict,ele);
+            if (htNeedsResize(tree->dict)) dictResize(tree->dict);
+            if (dictSize(tree->dict) == 0) {
+                dbDelete(c->db,key);
+                break;
+            }
+        }
+    }
+
+    if (deleted) {
+        signalModifiedKey(c->db,key);
+        server.dirty += deleted;
+    }
+    addReplyLongLong(c,deleted);
+}
+
