@@ -111,11 +111,18 @@ start_server {tags {"iset"}} {
         assert_equal {x y} [r istab itmp 2]
     }
 
-    test "ISET adding multiple keys to a node" {
+    test "ISET IREM basics" {
+        r del itmp
+        r iadd itmp 1 3 x
+        assert_equal {1} [r irem itmp x]
+        assert_error "*no*such*key" {r istab itmp 2}
+    }
+
+    test "ISET adding multiple keys to a node then deleting one" {
         r del itmp
         r iadd itmp 1 3 x
         r iadd itmp 1 3 y
-        r irem x
+        r irem itmp x
         assert_equal {y} [r istab itmp 2]
     }
 }
