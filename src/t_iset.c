@@ -43,19 +43,21 @@ avlNode *avlCreateNode(double lscore, double rscore, robj *obj) {
     return an;
 }
 
-void avlFreeNode(avlNode *node) {
+void avlFreeNode(avlNode *node, int eraseList) {
+    if (eraseList && node->next)
+        avlFreeNode(node->next, eraseList);
     if (node->obj)
         decrRefCount(node->obj);
     if (node->left)
-        avlFreeNode(node->left);
+        avlFreeNode(node->left, eraseList);
     if (node->right)
-        avlFreeNode(node->right);
+        avlFreeNode(node->right, eraseList);
     zfree(node);
 }
 
 void avlFree(avl *tree) {
     if (tree->root != NULL)
-        avlFreeNode(tree->root);
+        avlFreeNode(tree->root,1);
     dictRelease(tree->dict);
     zfree(tree);
 }
@@ -330,13 +332,13 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
 
                 locNode->right = NULL;
                 locNode->left = NULL;
-                avlFreeNode(locNode);
+                avlFreeNode(locNode,0);
                 *removed = 1;
                 return 0;
             }
             else {
                 prevNode->next = removeNode->next;
-                avlFreeNode(removeNode);
+                avlFreeNode(removeNode,0);
                 *removed = 1;
                 return 0;
             }
@@ -349,7 +351,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
                     if (locNode->parent)
                         avlUpdateMaxScores(locNode->parent);
                     if (freeNodeMem)
-                        avlFreeNode(locNode);
+                        avlFreeNode(locNode,0);
                     *removed = 1;
                     return -1;
                 }
@@ -358,7 +360,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
                     avlUpdateMaxScores(locNode->parent);
                 locNode->right = NULL;
                 if (freeNodeMem)
-                    avlFreeNode(locNode);
+                    avlFreeNode(locNode,0);
                 *removed = 1;
                 return -1;
             }
@@ -368,7 +370,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
                     avlUpdateMaxScores(locNode->parent);
                 locNode->left = NULL;
                 if (freeNodeMem)
-                    avlFreeNode(locNode);
+                    avlFreeNode(locNode,0);
                 *removed = 1;
                 return -1;
             }
@@ -399,7 +401,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
             locNode->left = NULL;
             locNode->right = NULL;
             if (freeNodeMem)
-                avlFreeNode(locNode);
+                avlFreeNode(locNode,0);
 
             if (replacementNode->balance == 0)
                 return heightDelta;
