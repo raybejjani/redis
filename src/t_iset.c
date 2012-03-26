@@ -518,6 +518,10 @@ int avlRemove(avl *tree, double lscore, double rscore, robj * obj) {
     avlNode *delNode = avlCreateNode(lscore, rscore, obj);
     avlRemoveNode(tree, tree->root, delNode, 1, &removed);
 
+    /* delNode has no left or right pointes, and we don't want to incr
+     * the ref count, so we don't want avlFreeNode here */
+    zfree(delNode);
+
     if (removed)
         tree->size = tree->size - 1;
 
