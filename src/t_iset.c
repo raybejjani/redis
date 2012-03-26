@@ -529,7 +529,7 @@ int avlRemove(avl *tree, double lscore, double rscore, robj * obj) {
 
     if (tree->size == 0)
         tree->root = NULL;
-
+    
     return removed;
 }
 
@@ -658,13 +658,6 @@ void iaddCommand(redisClient *c) {
         ele = c->argv[4+j*3] = tryObjectEncoding(c->argv[4+j*3]);
         de = dictFind(((avl *) (iobj->ptr))->dict,ele);
 
-        /* XXX
-            Commenting this section out for the time being -
-            we will need to add an element->avlNode hashmap to
-            quickly check if an element has already been added
-            to the tree and quickly remove said element before
-            updating the elements score.
-           XXX */
         /* If object is found in iobj */
 
         if (de != NULL) {
@@ -673,7 +666,6 @@ void iaddCommand(redisClient *c) {
 
             if (curscores[0] != min || curscores[1] != max) {
                 // remove and re-insert
-                // TODO
                 avlRemove((avl *) (iobj->ptr), curscores[0], curscores[1], ele);
                 addedNode = avlInsert((avl *) (iobj->ptr), min, max, ele);
                 incrRefCount(ele); /* Re-added to AVL tree. */
