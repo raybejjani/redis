@@ -995,7 +995,7 @@ void backgroundRewriteDoneHandler(int exitcode, int bysignal);
 
 avl *avlCreate(void);
 avlNode *avlCreateNode(double lscore, double rscore, robj *obj);
-void avlFreeNode(avlNode *node);
+void avlFreeNode(avlNode *node, int removeList);
 void avlFree(avl *tree);
 int avlNodeCmp(avlNode *a, avlNode *b);
 void avlLeftRotation(avl * tree, avlNode *locNode);
