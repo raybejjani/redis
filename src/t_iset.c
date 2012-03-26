@@ -291,7 +291,7 @@ void avlRemoveFromParent(avl * tree, avlNode *locNode, avlNode *replacementNode)
     }
 }
 
-int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeMem) {
+int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeMem, int * removed) {
     int diff = avlNodeCmp(locNode, delNode);
     int heightDelta;
     avlNode *replacementNode;
@@ -331,11 +331,13 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
                 locNode->right = NULL;
                 locNode->left = NULL;
                 avlFreeNode(locNode);
+                *removed = 1;
                 return 0;
             }
             else {
                 prevNode->next = removeNode->next;
                 avlFreeNode(removeNode);
+                *removed = 1;
                 return 0;
             }
         }
@@ -348,6 +350,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
                         avlUpdateMaxScores(locNode->parent);
                     if (freeNodeMem)
                         avlFreeNode(locNode);
+                    *removed = 1;
                     return -1;
                 }
                 avlRemoveFromParent(tree,locNode,locNode->right);
@@ -356,6 +359,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
                 locNode->right = NULL;
                 if (freeNodeMem)
                     avlFreeNode(locNode);
+                *removed = 1;
                 return -1;
             }
             if (!locNode->right) {
@@ -365,6 +369,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
                 locNode->left = NULL;
                 if (freeNodeMem)
                     avlFreeNode(locNode);
+                *removed = 1;
                 return -1;
             }
 
@@ -383,7 +388,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
             }
 
             // Remove the replacementNode from the tree
-            heightDelta = avlRemoveNode(tree, locNode,replacementNode,0);
+            heightDelta = avlRemoveNode(tree, locNode,replacementNode,0,NULL);
             replacementNode->left = locNode->left;
             replacementNode->right = locNode->right;
             locNode->right->parent = replacementNode;
@@ -398,6 +403,8 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
 
             if (replacementNode->balance == 0)
                 return heightDelta;
+            
+            *removed = 1;
 
             return 0;
         }
@@ -406,7 +413,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
     // The node is in the left subtree
     else if (diff > 0) {
         if (locNode->left) {
-            heightDelta = avlRemoveNode(tree, locNode->left,delNode,1);
+            heightDelta = avlRemoveNode(tree, locNode->left,delNode,1,removed);
             if (heightDelta) {
                 locNode->balance = locNode->balance + 1;
                 if (locNode->balance == 0)
@@ -455,7 +462,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
     // The node is in the right subtree
     else if (diff < 0) {
         if (locNode->right) {
-            heightDelta = avlRemoveNode(tree, locNode->right,delNode,1);
+            heightDelta = avlRemoveNode(tree, locNode->right,delNode,1,removed);
             if (heightDelta) {
                 locNode->balance = locNode->balance - 1;
                 if (locNode->balance == 0)
@@ -503,11 +510,13 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
 }
 
 int avlRemove(avl *tree, double lscore, double rscore, robj * obj) {
+    int removed = 0;
+    
     if (!tree->root)
         return 0;
 
     avlNode *delNode = avlCreateNode(lscore, rscore, obj);
-    int removed = avlRemoveNode(tree, tree->root, delNode, 1);
+    avlRemoveNode(tree, tree->root, delNode, 1, &removed);
 
     if (removed)
         tree->size = tree->size - 1;
