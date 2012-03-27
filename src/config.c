@@ -202,8 +202,10 @@ void loadServerConfigFromString(char *config) {
             if ((server.repl_serve_stale_data = yesnotoi(argv[1])) == -1) {
                 err = "argument must be 'yes' or 'no'"; goto loaderr;
             }
-        } else if (!strcasecmp(argv[0],"glueoutputbuf")) {
-            redisLog(REDIS_WARNING, "Deprecated configuration directive: \"%s\"", argv[0]);
+        } else if (!strcasecmp(argv[0],"slave-read-only") && argc == 2) {
+            if ((server.repl_slave_ro = yesnotoi(argv[1])) == -1) {
+                err = "argument must be 'yes' or 'no'"; goto loaderr;
+            }
         } else if (!strcasecmp(argv[0],"rdbcompression") && argc == 2) {
             if ((server.rdb_compression = yesnotoi(argv[1])) == -1) {
                 err = "argument must be 'yes' or 'no'"; goto loaderr;
@@ -262,10 +264,10 @@ void loadServerConfigFromString(char *config) {
         } else if (!strcasecmp(argv[0],"dbfilename") && argc == 2) {
             zfree(server.rdb_filename);
             server.rdb_filename = zstrdup(argv[1]);
-        } else if (!strcasecmp(argv[0],"hash-max-zipmap-entries") && argc == 2) {
-            server.hash_max_zipmap_entries = memtoll(argv[1], NULL);
-        } else if (!strcasecmp(argv[0],"hash-max-zipmap-value") && argc == 2) {
-            server.hash_max_zipmap_value = memtoll(argv[1], NULL);
+        } else if (!strcasecmp(argv[0],"hash-max-ziplist-entries") && argc == 2) {
+            server.hash_max_ziplist_entries = memtoll(argv[1], NULL);
+        } else if (!strcasecmp(argv[0],"hash-max-ziplist-value") && argc == 2) {
+            server.hash_max_ziplist_value = memtoll(argv[1], NULL);
         } else if (!strcasecmp(argv[0],"list-max-ziplist-entries") && argc == 2){
             server.list_max_ziplist_entries = memtoll(argv[1], NULL);
         } else if (!strcasecmp(argv[0],"list-max-ziplist-value") && argc == 2) {
@@ -516,17 +518,22 @@ void configSetCommand(redisClient *c) {
 
         if (yn == -1) goto badfmt;
         server.repl_serve_stale_data = yn;
+    } else if (!strcasecmp(c->argv[2]->ptr,"slave-read-only")) {
+        int yn = yesnotoi(o->ptr);
+
+        if (yn == -1) goto badfmt;
+        server.repl_slave_ro = yn;
     } else if (!strcasecmp(c->argv[2]->ptr,"dir")) {
         if (chdir((char*)o->ptr) == -1) {
             addReplyErrorFormat(c,"Changing directory: %s", strerror(errno));
             return;
         }
-    } else if (!strcasecmp(c->argv[2]->ptr,"hash-max-zipmap-entries")) {
+    } else if (!strcasecmp(c->argv[2]->ptr,"hash-max-ziplist-entries")) {
         if (getLongLongFromObject(o,&ll) == REDIS_ERR || ll < 0) goto badfmt;
-        server.hash_max_zipmap_entries = ll;
-    } else if (!strcasecmp(c->argv[2]->ptr,"hash-max-zipmap-value")) {
+        server.hash_max_ziplist_entries = ll;
+    } else if (!strcasecmp(c->argv[2]->ptr,"hash-max-ziplist-value")) {
         if (getLongLongFromObject(o,&ll) == REDIS_ERR || ll < 0) goto badfmt;
-        server.hash_max_zipmap_value = ll;
+        server.hash_max_ziplist_value = ll;
     } else if (!strcasecmp(c->argv[2]->ptr,"list-max-ziplist-entries")) {
         if (getLongLongFromObject(o,&ll) == REDIS_ERR || ll < 0) goto badfmt;
         server.list_max_ziplist_entries = ll;
@@ -684,10 +691,10 @@ void configGetCommand(redisClient *c) {
             server.aof_rewrite_perc);
     config_get_numerical_field("auto-aof-rewrite-min-size",
             server.aof_rewrite_min_size);
-    config_get_numerical_field("hash-max-zipmap-entries",
-            server.hash_max_zipmap_entries);
-    config_get_numerical_field("hash-max-zipmap-value",
-            server.hash_max_zipmap_value);
+    config_get_numerical_field("hash-max-ziplist-entries",
+            server.hash_max_ziplist_entries);
+    config_get_numerical_field("hash-max-ziplist-value",
+            server.hash_max_ziplist_value);
     config_get_numerical_field("list-max-ziplist-entries",
             server.list_max_ziplist_entries);
     config_get_numerical_field("list-max-ziplist-value",
@@ -714,6 +721,8 @@ void configGetCommand(redisClient *c) {
             server.aof_no_fsync_on_rewrite);
     config_get_bool_field("slave-serve-stale-data",
             server.repl_serve_stale_data);
+    config_get_bool_field("slave-read-only",
+            server.repl_slave_ro);
     config_get_bool_field("stop-writes-on-bgsave-error",
             server.stop_writes_on_bgsave_err);
     config_get_bool_field("daemonize", server.daemonize);
@@ -850,6 +859,9 @@ void configCommand(redisClient *c) {
         server.stat_numcommands = 0;
         server.stat_numconnections = 0;
         server.stat_expiredkeys = 0;
+        server.stat_rejected_conn = 0;
+        server.stat_fork_time = 0;
+        server.aof_delayed_fsync = 0;
         resetCommandTableStats();
         addReply(c,shared.ok);
     } else {
