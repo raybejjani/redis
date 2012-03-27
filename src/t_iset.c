@@ -40,6 +40,9 @@ avlNode *avlCreateNode(double lscore, double rscore, robj *obj) {
     an->next = NULL;
     an->obj = obj;
 
+    if (obj)
+        incrRefCount(obj);
+    
     return an;
 }
 
@@ -102,7 +105,7 @@ void avlRightRotation(avl * tree, avlNode *locNode) {
     locNode->left = newRoot->right;
     newRoot->right = locNode;
     if (locNode->left)
-        locNode->right->parent = locNode;
+        locNode->left->parent = locNode;
     newRoot->parent = locNode->parent;
     locNode->parent = newRoot;
     if (newRoot->parent) {
@@ -188,10 +191,25 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
                 if (locNode->left->balance < 0) {
                     // Left-Left, single right rotation needed
                     avlRightRotation(tree,locNode);
+                    // Update locNode balance
+                    if (locNode->left) {
+                        if (locNode->right) {
+                            locNode->balance = locNode->left->balance + locNode->right->balance;
+                        }
+                        else {
+                            locNode->balance = locNode->left->balance - 1;
+                        }
+                    } else if (locNode->right) {
+                        locNode->balance = locNode->right->balance + 1;
+                    }
+                    else {
+                        locNode->balance = 0;
+                    }
+                    
                     if (locNode->right)
                         locNode->right->balance = 0;
                     locNode->parent->balance = 0;
-
+                    
                     locNode->subLeftMax = locNode->parent->subRightMax;
                     locNode->parent->subRightMax = -INFINITY;
                 }
@@ -206,6 +224,7 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
                     locNode->parent->subRightMax = -INFINITY;
                     locNode->parent->subLeftMax = -INFINITY;
                 }
+                
                 avlUpdateMaxScores(locNode->parent);
             }
             return 0;
@@ -234,6 +253,21 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
                     // Right-Right, single left rotation needed
                     avlLeftRotation(tree,locNode);
 
+                    // Update locNode balance
+                    if (locNode->left) {
+                        if (locNode->right) {
+                            locNode->balance = locNode->left->balance + locNode->right->balance;
+                        }
+                        else {
+                            locNode->balance = locNode->left->balance - 1;
+                        }
+                    } else if (locNode->right) {
+                        locNode->balance = locNode->right->balance + 1;
+                    }
+                    else {
+                        locNode->balance = 0;
+                    }
+                    
                     if (locNode->left)
                         locNode->left->balance = 0;
                     locNode->parent->balance = 0;
@@ -252,6 +286,7 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
                     locNode->parent->subRightMax = -INFINITY;
                     locNode->parent->subLeftMax = -INFINITY;
                 }
+                
                 avlUpdateMaxScores(locNode->parent);
             }
             return 0;
@@ -519,10 +554,7 @@ int avlRemove(avl *tree, double lscore, double rscore, robj * obj) {
 
     avlNode *delNode = avlCreateNode(lscore, rscore, obj);
     avlRemoveNode(tree, tree->root, delNode, 1, &removed);
-
-    /* delNode has no left or right pointes, and we don't want to incr
-     * the ref count, so we don't want avlFreeNode here */
-    zfree(delNode);
+    avlFreeNode(delNode,0);
 
     if (removed)
         tree->size = tree->size - 1;
@@ -680,10 +712,8 @@ void iaddCommand(redisClient *c) {
             /* XXX: do we need the cast here? Answer from Ken! I believe so,
             as robj.ptr is declared as a void, and avlInsert expects an avl pointer */
             addedNode = avlInsert((avl *) (iobj->ptr), min, max, ele);
-            incrRefCount(ele); /* Added to AVL tree. */
             redisAssertWithInfo(c,NULL,dictAdd(((avl *) (iobj->ptr))->dict,ele,&addedNode->scores) == DICT_OK);
             added++;
-
             incrRefCount(ele); /* Added to dictionary. */
             signalModifiedKey(c->db,key);
             server.dirty++;
