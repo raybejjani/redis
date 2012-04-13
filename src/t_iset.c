@@ -700,7 +700,6 @@ void iaddCommand(redisClient *c) {
                 // remove and re-insert
                 avlRemove((avl *) (iobj->ptr), curscores[0], curscores[1], ele);
                 addedNode = avlInsert((avl *) (iobj->ptr), min, max, ele);
-                incrRefCount(ele); /* Re-added to AVL tree. */
                 dictGetVal(de) = addedNode->scores; /* Update scores ptr. */
                 added++;
 
