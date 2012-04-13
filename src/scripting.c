@@ -15,6 +15,7 @@ char *redisProtocolToLuaType_Error(lua_State *lua, char *reply);
 char *redisProtocolToLuaType_MultiBulk(lua_State *lua, char *reply);
 int redis_math_random (lua_State *L);
 int redis_math_randomseed (lua_State *L);
+void sha1hex(char *digest, char *script, size_t len);
 
 /* Take a Redis reply in the Redis protocol format and convert it into a
  * Lua type. Thanks to this function, and the introduction of not connected
@@ -306,6 +307,25 @@ int luaRedisPCallCommand(lua_State *lua) {
     return luaRedisGenericCommand(lua,0);
 }
 
+/* This adds redis.sha1hex(string) to Lua scripts using the same hashing
+ * function used for sha1ing lua scripts. */
+int luaRedisSha1hexCommand(lua_State *lua) {
+    int argc = lua_gettop(lua);
+    char digest[41];
+    size_t len;
+    char *s;
+
+    if (argc != 1) {
+        luaPushError(lua, "wrong number of arguments");
+        return 1;
+    }
+
+    s = (char*)lua_tolstring(lua,1,&len);
+    sha1hex(digest,s,len);
+    lua_pushstring(lua,digest);
+    return 1;
+}
+
 int luaLogCommand(lua_State *lua) {
     int j, argc = lua_gettop(lua);
     int level;
@@ -392,6 +412,43 @@ void luaLoadLibraries(lua_State *lua) {
 #endif
 }
 
+/* This function installs metamethods in the global table _G that prevent
+ * the creation of globals accidentally.
+ *
+ * It should be the last to be called in the scripting engine initialization
+ * sequence, because it may interact with creation of globals. */
+void scriptingEnableGlobalsProtection(lua_State *lua) {
+    char *s[32];
+    sds code = sdsempty();
+    int j = 0;
+
+    /* strict.lua from: http://metalua.luaforge.net/src/lib/strict.lua.html.
+     * Modified to be adapted to Redis. */
+    s[j++]="local mt = {}\n";
+    s[j++]="setmetatable(_G, mt)\n";
+    s[j++]="mt.__newindex = function (t, n, v)\n";
+    s[j++]="  if debug.getinfo(2) then\n";
+    s[j++]="    local w = debug.getinfo(2, \"S\").what\n";
+    s[j++]="    if w ~= \"main\" and w ~= \"C\" then\n";
+    s[j++]="      error(\"Script attempted to create global variable '\"..tostring(n)..\"'\", 2)\n";
+    s[j++]="    end\n";
+    s[j++]="  end\n";
+    s[j++]="  rawset(t, n, v)\n";
+    s[j++]="end\n";
+    s[j++]="mt.__index = function (t, n)\n";
+    s[j++]="  if debug.getinfo(2) and debug.getinfo(2, \"S\").what ~= \"C\" then\n";
+    s[j++]="    error(\"Script attempted to access unexisting global variable '\"..tostring(n)..\"'\", 2)\n";
+    s[j++]="  end\n";
+    s[j++]="  return rawget(t, n)\n";
+    s[j++]="end\n";
+    s[j++]=NULL;
+
+    for (j = 0; s[j] != NULL; j++) code = sdscatlen(code,s[j],strlen(s[j]));
+    luaL_loadbuffer(lua,code,sdslen(code),"@enable_strict_lua");
+    lua_pcall(lua,0,0,0);
+    sdsfree(code);
+}
+
 /* Initialize the scripting environment.
  * It is possible to call this function to reset the scripting environment
  * assuming that we call scriptingRelease() before.
@@ -439,6 +496,11 @@ void scriptingInit(void) {
     lua_pushnumber(lua,REDIS_WARNING);
     lua_settable(lua,-3);
 
+    /* redis.sha1hex */
+    lua_pushstring(lua, "sha1hex");
+    lua_pushcfunction(lua, luaRedisSha1hexCommand);
+    lua_settable(lua, -3);
+
     /* Finally set the table as 'redis' global var. */
     lua_setglobal(lua,"redis");
 
@@ -463,7 +525,7 @@ void scriptingInit(void) {
                                 "  if b == false then b = '' end\n"
                                 "  return a<b\n"
                                 "end\n";
-        luaL_loadbuffer(lua,compare_func,strlen(compare_func),"cmp_func_def");
+        luaL_loadbuffer(lua,compare_func,strlen(compare_func),"@cmp_func_def");
         lua_pcall(lua,0,0,0);
     }
 
@@ -475,6 +537,11 @@ void scriptingInit(void) {
         server.lua_client = createClient(-1);
         server.lua_client->flags |= REDIS_LUA_CLIENT;
     }
+
+    /* Lua beginners ofter don't use "local", this is likely to introduce
+     * subtle bugs in their code. To prevent problems we protect accesses
+     * to global variables. */
+    scriptingEnableGlobalsProtection(lua);
 
     server.lua = lua;
 }
@@ -491,10 +558,13 @@ void scriptingReset(void) {
     scriptingInit();
 }
 
-/* Hash the scripit into a SHA1 digest. We use this as Lua function name.
- * Digest should point to a 41 bytes buffer: 40 for SHA1 converted into an
+/* Perform the SHA1 of the input string. We use this both for hasing script
+ * bodies in order to obtain the Lua function name, and in the implementation
+ * of redis.sha1().
+ *
+ * 'digest' should point to a 41 bytes buffer: 40 for SHA1 converted into an
  * hexadecimal number, plus 1 byte for null term. */
-void hashScript(char *digest, char *script, size_t len) {
+void sha1hex(char *digest, char *script, size_t len) {
     SHA1_CTX ctx;
     unsigned char hash[20];
     char *cset = "0123456789abcdef";
@@ -606,7 +676,7 @@ int luaCreateFunction(redisClient *c, lua_State *lua, char *funcname, robj *body
     funcdef = sdscatlen(funcdef,body->ptr,sdslen(body->ptr));
     funcdef = sdscatlen(funcdef," end",4);
 
-    if (luaL_loadbuffer(lua,funcdef,sdslen(funcdef),"func definition")) {
+    if (luaL_loadbuffer(lua,funcdef,sdslen(funcdef),"@user_script")) {
         addReplyErrorFormat(c,"Error compiling script (new function): %s\n",
             lua_tostring(lua,-1));
         lua_pop(lua,1);
@@ -667,7 +737,7 @@ void evalGenericCommand(redisClient *c, int evalsha) {
     funcname[1] = '_';
     if (!evalsha) {
         /* Hash the code if this is an EVAL call */
-        hashScript(funcname+2,c->argv[1]->ptr,sdslen(c->argv[1]->ptr));
+        sha1hex(funcname+2,c->argv[1]->ptr,sdslen(c->argv[1]->ptr));
     } else {
         /* We already have the SHA if it is a EVALSHA */
         int j;
@@ -841,7 +911,7 @@ void scriptCommand(redisClient *c) {
 
         funcname[0] = 'f';
         funcname[1] = '_';
-        hashScript(funcname+2,c->argv[2]->ptr,sdslen(c->argv[2]->ptr));
+        sha1hex(funcname+2,c->argv[2]->ptr,sdslen(c->argv[2]->ptr));
         sha = sdsnewlen(funcname+2,40);
         if (dictFind(server.lua_scripts,sha) == NULL) {
             if (luaCreateFunction(c,server.lua,funcname,c->argv[2])

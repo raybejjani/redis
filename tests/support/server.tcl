@@ -17,7 +17,7 @@ proc check_valgrind_errors stderr {
     set buf [read $fd]
     close $fd
 
-    if {![regexp -- {ERROR SUMMARY: 0 errors} $buf] ||
+    if {[regexp -- { at 0x} $buf] ||
         (![regexp -- {definitely lost: 0 bytes} $buf] &&
          ![regexp -- {no leaks are possible} $buf])} {
         send_data_packet $::test_server_fd err "Valgrind error: $buf\n"
@@ -46,11 +46,16 @@ proc kill_server config {
     }
 
     # kill server and wait for the process to be totally exited
+    catch {exec kill $pid}
     while {[is_alive $config]} {
-        if {[incr wait 10] % 1000 == 0} {
+        incr wait 10
+
+        if {$wait >= 5000} {
+            puts "Forcing process $pid to exit..."
+            catch {exec kill -KILL $pid}
+        } elseif {$wait % 1000 == 0} {
             puts "Waiting for process $pid to exit..."
         }
-        catch {exec kill $pid}
         after 10
     }
 

@@ -52,7 +52,7 @@ redisClient *createClient(int fd) {
     c->bulklen = -1;
     c->sentlen = 0;
     c->flags = 0;
-    c->ctime = c->lastinteraction = time(NULL);
+    c->ctime = c->lastinteraction = server.unixtime;
     c->authenticated = 0;
     c->replstate = REDIS_REPL_NONE;
     c->reply = listCreate();
@@ -547,6 +547,16 @@ static void freeClientArgv(redisClient *c) {
     c->cmd = NULL;
 }
 
+/* Close all the slaves connections. This is useful in chained replication
+ * when we resync with our own master and want to force all our slaves to
+ * resync with us as well. */
+void disconnectSlaves(void) {
+    while (listLength(server.slaves)) {
+        listNode *ln = listFirst(server.slaves);
+        freeClient((redisClient*)ln->value);
+    }
+}
+
 void freeClient(redisClient *c) {
     listNode *ln;
 
@@ -604,22 +614,13 @@ void freeClient(redisClient *c) {
     if (c->flags & REDIS_MASTER) {
         server.master = NULL;
         server.repl_state = REDIS_REPL_CONNECT;
-        server.repl_down_since = time(NULL);
-        /* Since we lost the connection with the master, we should also
-         * close the connection with all our slaves if we have any, so
-         * when we'll resync with the master the other slaves will sync again
-         * with us as well. Note that also when the slave is not connected
-         * to the master it will keep refusing connections by other slaves.
+        server.repl_down_since = server.unixtime;
+        /* We lost connection with our master, force our slaves to resync
+         * with us as well to load the new data set.
          *
-         * We do this only if server.masterhost != NULL. If it is NULL this
-         * means the user called SLAVEOF NO ONE and we are freeing our
-         * link with the master, so no need to close link with slaves. */
-        if (server.masterhost != NULL) {
-            while (listLength(server.slaves)) {
-                ln = listFirst(server.slaves);
-                freeClient((redisClient*)ln->value);
-            }
-        }
+         * If server.masterhost is NULL the user called SLAVEOF NO ONE so
+         * slave resync is not needed. */
+        if (server.masterhost != NULL) disconnectSlaves();
     }
 
     /* If this client was scheduled for async freeing we need to remove it
@@ -732,7 +733,7 @@ void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
             return;
         }
     }
-    if (totwritten > 0) c->lastinteraction = time(NULL);
+    if (totwritten > 0) c->lastinteraction = server.unixtime;
     if (c->bufpos == 0 && listLength(c->reply) == 0) {
         c->sentlen = 0;
         aeDeleteFileEvent(server.el,c->fd,AE_WRITABLE);
@@ -1017,7 +1018,7 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     }
     if (nread) {
         sdsIncrLen(c->querybuf,nread);
-        c->lastinteraction = time(NULL);
+        c->lastinteraction = server.unixtime;
     } else {
         server.current_client = NULL;
         return;
@@ -1058,7 +1059,6 @@ void getClientsMaxBuffers(unsigned long *longest_output_list,
 sds getClientInfoString(redisClient *client) {
     char ip[32], flags[16], events[3], *p;
     int port;
-    time_t now = time(NULL);
     int emask;
 
     anetPeerToString(client->fd,ip,&port);
@@ -1085,14 +1085,15 @@ sds getClientInfoString(redisClient *client) {
     if (emask & AE_WRITABLE) *p++ = 'w';
     *p = '\0';
     return sdscatprintf(sdsempty(),
-        "addr=%s:%d fd=%d age=%ld idle=%ld flags=%s db=%d sub=%d psub=%d qbuf=%lu qbuf-free=%lu obl=%lu oll=%lu omem=%lu events=%s cmd=%s",
+        "addr=%s:%d fd=%d age=%ld idle=%ld flags=%s db=%d sub=%d psub=%d multi=%d qbuf=%lu qbuf-free=%lu obl=%lu oll=%lu omem=%lu events=%s cmd=%s",
         ip,port,client->fd,
-        (long)(now - client->ctime),
-        (long)(now - client->lastinteraction),
+        (long)(server.unixtime - client->ctime),
+        (long)(server.unixtime - client->lastinteraction),
         flags,
         client->db->id,
         (int) dictSize(client->pubsub_channels),
         (int) listLength(client->pubsub_patterns),
+        (client->flags & REDIS_MULTI) ? client->mstate.count : -1,
         (unsigned long) sdslen(client->querybuf),
         (unsigned long) sdsavail(client->querybuf),
         (unsigned long) client->bufpos,

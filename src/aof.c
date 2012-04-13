@@ -46,7 +46,7 @@ void stopAppendOnly(void) {
 /* Called when the user switches from "appendonly no" to "appendonly yes"
  * at runtime using the CONFIG command. */
 int startAppendOnly(void) {
-    server.aof_last_fsync = time(NULL);
+    server.aof_last_fsync = server.unixtime;
     server.aof_fd = open(server.aof_filename,O_WRONLY|O_APPEND|O_CREAT,0644);
     redisAssert(server.aof_state == REDIS_AOF_OFF);
     if (server.aof_fd == -1) {
@@ -803,9 +803,9 @@ int rewriteAppendOnlyFileBackground(void) {
         if (server.sofd > 0) close(server.sofd);
         snprintf(tmpfile,256,"temp-rewriteaof-bg-%d.aof", (int) getpid());
         if (rewriteAppendOnlyFile(tmpfile) == REDIS_OK) {
-            _exit(0);
+            exitFromChild(0);
         } else {
-            _exit(1);
+            exitFromChild(1);
         }
     } else {
         /* Parent */
