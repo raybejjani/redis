@@ -33,6 +33,15 @@ start_server {tags {"iset"}} {
         assert_equal {} [r istab itmp 14]
     }
 
+    test "demonstrate memory leak. DELETEME" {
+        r del itmp
+        r iadd itmp 10 20 x
+        r iadd itmp 15 25 x
+        assert_equal {x} [r istab itmp 24]
+        assert_equal {} [r istab itmp 14]
+        r del itmp
+    }
+
     test "ISET wrong number of arguments" {
         assert_error "*wrong*number*arguments*" {r iadd itmp 2}
         assert_error "*wrong*number*arguments*" {r iadd itmp 2 3}
