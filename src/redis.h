@@ -1228,6 +1228,7 @@ void msetCommand(redisClient *c);
 void msetnxCommand(redisClient *c);
 void iaddCommand(redisClient *c);
 void iremCommand(redisClient *c);
+void irembystabCommand(redisClient *c);
 void istabCommand(redisClient *c);
 void istabIntervalCommand(redisClient *c);
 void zaddCommand(redisClient *c);

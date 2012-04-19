@@ -161,6 +161,7 @@ struct redisCommand redisCommandTable[] = {
     {"smembers",sinterCommand,2,"rS",0,NULL,1,1,1,0,0},
     {"iadd",iaddCommand,-5,"wm",0,NULL,1,1,1,0,0},
     {"irem",iremCommand,-3,"w",0,NULL,1,1,1,0,0},
+    {"irembystab",irembystabCommand,2,"w",0,NULL,1,1,1,0,0},
     {"istab",istabCommand,-3,"r",0,NULL,1,1,1,0,0},
     {"zadd",zaddCommand,-4,"wm",0,NULL,1,1,1,0,0},
     {"zincrby",zincrbyCommand,4,"wm",0,NULL,1,1,1,0,0},

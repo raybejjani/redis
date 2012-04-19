@@ -816,6 +816,9 @@ void istabIntervalCommand(redisClient *c) {
     genericStabCommand(c,c->argv[2],c->argv[3],1);
 }
 
+void irembystabCommand(redisClient *c) {
+}
+
 void iremCommand(redisClient *c) {
     robj *key = c->argv[1];
     robj *iobj;
