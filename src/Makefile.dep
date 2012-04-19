@@ -86,6 +86,9 @@ syncio.o: syncio.c redis.h fmacros.h config.h ../deps/lua/src/lua.h \
 t_hash.o: t_hash.c redis.h fmacros.h config.h ../deps/lua/src/lua.h \
   ../deps/lua/src/luaconf.h ae.h sds.h dict.h adlist.h zmalloc.h anet.h \
   ziplist.h intset.h version.h util.h rdb.h rio.h
+t_iset.o: t_iset.c redis.h fmacros.h config.h ../deps/lua/src/lua.h \
+  ../deps/lua/src/luaconf.h ae.h sds.h dict.h adlist.h zmalloc.h anet.h \
+  ziplist.h intset.h version.h util.h rdb.h rio.h
 t_list.o: t_list.c redis.h fmacros.h config.h ../deps/lua/src/lua.h \
   ../deps/lua/src/luaconf.h ae.h sds.h dict.h adlist.h zmalloc.h anet.h \
   ziplist.h intset.h version.h util.h rdb.h rio.h
