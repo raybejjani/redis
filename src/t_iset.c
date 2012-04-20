@@ -784,7 +784,6 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int in
     replylen = addDeferredMultiBulkLength(c);
     reswalker = resnode;
 
-
     while (reswalker != NULL) {
         nodewalker = reswalker->data;
         while (nodewalker != NULL) {
@@ -817,6 +816,27 @@ void istabIntervalCommand(redisClient *c) {
 }
 
 void irembystabCommand(redisClient *c) {
+    robj *key = c->argv[1];
+    robj *iobj;
+    long point;
+    avlResultNode * resnode;
+    avl * tree;
+
+    if (getLongFromObjectOrReply(c, c->argv[2], &point, NULL) != REDIS_OK) return;
+
+    if ((iobj = lookupKeyWriteOrReply(c,key,shared.czero)) == NULL ||
+        checkType(c,iobj,REDIS_ISET)) return;
+
+    tree = (avl *) (iobj->ptr);
+    resnode = avlStab(((avl *) (iobj->ptr))->root, point, point, NULL);
+
+    /* No results. */
+    if (resnode == NULL) {
+        addReplyLongLong(c, 0);
+        return;
+    }
+
+
 }
 
 void iremCommand(redisClient *c) {
