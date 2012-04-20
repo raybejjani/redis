@@ -125,4 +125,20 @@ start_server {tags {"iset"}} {
         r irem itmp x
         assert_equal {y} [r istab itmp 2]
     }
+
+    test "IREMBYSTAB empty" {
+        r del itmp
+        r iadd itmp 0 1 x
+        assert_equal {0} [r irembystab itmp 2]
+    }
+
+    test "IREMBYSTAB basics" {
+        r del itmp
+        r iadd itmp 1 4 x
+        r iadd itmp 2 5 y
+        r iadd itmp 20 50 z
+        r irembystab itmp 2
+        assert_equal {} [r istab itmp 2]
+        assert_equal {z} [r istab itmp 25]
+    }
 }
