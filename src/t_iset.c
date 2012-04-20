@@ -820,7 +820,12 @@ void irembystabCommand(redisClient *c) {
     robj *iobj;
     long point;
     avlResultNode * resnode;
+    avlResultNode * reswalker;
+    avlNode * nodewalker;
     avl * tree;
+    int deleted = 0;
+    dictEntry *de;
+    double *curscores;
 
     if (getLongFromObjectOrReply(c, c->argv[2], &point, NULL) != REDIS_OK) return;
 
@@ -836,7 +841,41 @@ void irembystabCommand(redisClient *c) {
         return;
     }
 
+    reswalker = resnode;
 
+    while (reswalker != NULL) {
+        nodewalker = reswalker->data;
+        while (nodewalker != NULL) {
+            de = dictFind(tree->dict,nodewalker->obj);
+            if (de != NULL) {
+                deleted++;
+
+                /* delete from the tree */
+                curscores = (double *) dictGetVal(de);
+                redisAssertWithInfo(c,nodewalker->obj,avlRemove(tree,curscores[0],curscores[1],nodewalker->obj));
+
+                /* delete from the hash table */
+                dictDelete(tree->dict,nodewalker->obj);
+                if (htNeedsResize(tree->dict)) dictResize(tree->dict);
+                if (dictSize(tree->dict) == 0) {
+                    dbDelete(c->db,key);
+                    break;
+                }
+
+                signalModifiedKey(c->db,key);
+            }
+            nodewalker = nodewalker->next;
+        }
+        reswalker = reswalker->next;
+    }
+
+    if (resnode)
+        avlFreeResults(resnode);
+
+    if (deleted)
+        server.dirty += deleted;
+
+    addReplyLongLong(c,deleted);
 }
 
 void iremCommand(redisClient *c) {
