@@ -857,12 +857,12 @@ void irembystabCommand(redisClient *c) {
                 /* delete from the hash table */
                 dictDelete(tree->dict,nodewalker->obj);
                 if (htNeedsResize(tree->dict)) dictResize(tree->dict);
+
+                signalModifiedKey(c->db,key);
                 if (dictSize(tree->dict) == 0) {
                     dbDelete(c->db,key);
                     break;
                 }
-
-                signalModifiedKey(c->db,key);
             }
             nodewalker = nodewalker->next;
         }
