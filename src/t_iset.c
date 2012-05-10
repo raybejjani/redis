@@ -749,7 +749,7 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int in
         }
     } else {
         if (c->argc > 3) {
-            if (!strcasecmp(c->argv[4]->ptr,"withintervals"))
+            if (!strcasecmp(c->argv[3]->ptr,"withintervals"))
                 withintervals = 1;
             else {
                 addReply(c,shared.syntaxerr);
