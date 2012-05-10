@@ -82,6 +82,13 @@ robj *createListObject(void) {
     return o;
 }
 
+robj *createIsetObject(void) {
+    avl *a = avlCreate();
+    robj *o = createObject(REDIS_ISET,a);
+    o->encoding = REDIS_ENCODING_AVLTREE;
+    return o;
+}
+
 robj *createZiplistObject(void) {
     unsigned char *zl = ziplistNew();
     robj *o = createObject(REDIS_LIST,zl);
@@ -177,6 +184,10 @@ void freeZsetObject(robj *o) {
     }
 }
 
+void freeIsetObject(robj *o) {
+    avlFree(o->ptr);
+}
+
 void freeHashObject(robj *o) {
     switch (o->encoding) {
     case REDIS_ENCODING_HT:
@@ -206,6 +217,7 @@ void decrRefCount(void *obj) {
         case REDIS_SET: freeSetObject(o); break;
         case REDIS_ZSET: freeZsetObject(o); break;
         case REDIS_HASH: freeHashObject(o); break;
+        case REDIS_ISET: freeIsetObject(o); break;
         default: redisPanic("Unknown object type"); break;
         }
         zfree(o);

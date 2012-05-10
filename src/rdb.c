@@ -431,6 +431,8 @@ int rdbSaveObjectType(rio *rdb, robj *o) {
             return rdbSaveType(rdb,REDIS_RDB_TYPE_HASH);
         else
             redisPanic("Unknown hash encoding");
+    case REDIS_ISET:
+        return rdbSaveType(rdb,REDIS_RDB_TYPE_ISET);
     default:
         redisPanic("Unknown object type");
     }
@@ -554,11 +556,30 @@ int rdbSaveObject(rio *rdb, robj *o) {
                 nwritten += n;
             }
             dictReleaseIterator(di);
-
         } else {
             redisPanic("Unknown hash encoding");
         }
-
+    } else if (o->type == REDIS_ISET) {
+        /* Save an AVL tree */
+        avl * tree = o->ptr;
+        dictIterator *di = dictGetIterator(tree->dict);
+        dictEntry *de;
+        
+        if ((n = rdbSaveLen(rdb,dictSize(tree->dict))) == -1) return -1;
+        nwritten += n;
+        
+        while((de = dictNext(di)) != NULL) {
+            robj *eleobj = dictGetKey(de);
+            double *scores = dictGetVal(de);
+            
+            if ((n = rdbSaveStringObject(rdb,eleobj)) == -1) return -1;
+            nwritten += n;
+            if ((n = rdbSaveDoubleValue(rdb,scores[0])) == -1) return -1;
+            nwritten += n;
+            if ((n = rdbSaveDoubleValue(rdb,scores[1])) == -1) return -1;
+            nwritten += n;
+        }
+        dictReleaseIterator(di);
     } else {
         redisPanic("Unknown object type");
     }

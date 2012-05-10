@@ -88,6 +88,7 @@
 #define REDIS_SET 2
 #define REDIS_ZSET 3
 #define REDIS_HASH 4
+#define REDIS_ISET 5
 #define REDIS_VMPOINTER 8
 
 /* Objects encoding. Some kind of objects like Strings and Hashes can be
@@ -101,6 +102,7 @@
 #define REDIS_ENCODING_ZIPLIST 5 /* Encoded as ziplist */
 #define REDIS_ENCODING_INTSET 6  /* Encoded as intset */
 #define REDIS_ENCODING_SKIPLIST 7  /* Encoded as skiplist */
+#define REDIS_ENCODING_AVLTREE 8   /* Encoded as AVL Tree */
 
 /* Defines related to the dump file format. To store 32 bits lengths for short
  * keys requires a lot of space, so we check the most significant 2 bits of
@@ -397,6 +399,26 @@ typedef struct zset {
     zskiplist *zsl;
 } zset;
 
+/* ISET specialized AVL structures */
+typedef struct avlNode {
+       robj *obj;
+       double scores[2];
+       double subLeftMax, subRightMax;
+       char balance;
+       struct avlNode *left, *right, *parent, *next;
+} avlNode;
+
+typedef struct avl {
+       struct avlNode *root;
+    dict *dict;
+       unsigned long size;
+} avl;
+
+typedef struct iset {
+       avl *avltree;
+       dict *dict;
+} iset;
+
 typedef struct clientBufferLimitsConfig {
     unsigned long long hard_limit_bytes;
     unsigned long long soft_limit_bytes;
@@ -681,6 +703,7 @@ extern struct redisServer server;
 extern struct sharedObjectsStruct shared;
 extern dictType setDictType;
 extern dictType zsetDictType;
+extern dictType isetDictType;
 extern dictType dbDictType;
 extern double R_Zero, R_PosInf, R_NegInf, R_Nan;
 dictType hashDictType;
@@ -790,6 +813,7 @@ size_t stringObjectLen(robj *o);
 robj *createStringObjectFromLongLong(long long value);
 robj *createStringObjectFromLongDouble(long double value);
 robj *createListObject(void);
+robj *createIsetObject(void);
 robj *createZiplistObject(void);
 robj *createSetObject(void);
 robj *createIntsetObject(void);
@@ -836,6 +860,19 @@ int loadAppendOnlyFile(char *filename);
 void stopAppendOnly(void);
 int startAppendOnly(void);
 void backgroundRewriteDoneHandler(int exitcode, int bysignal);
+
+/* AVL tree data type */
+
+avl *avlCreate(void);
+avlNode *avlCreateNode(double lscore, double rscore, robj *obj);
+void avlFreeNode(avlNode *node, int removeList);
+void avlFree(avl *tree);
+int avlNodeCmp(avlNode *a, avlNode *b);
+void avlLeftRotation(avl * tree, avlNode *locNode);
+void avlRightRotation(avl * tree, avlNode *locNode);
+void avlResetBalance(avlNode *locNode);
+int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode);
+avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj);
 
 /* Sorted sets data type */
 
@@ -1039,6 +1076,11 @@ void slaveofCommand(redisClient *c);
 void debugCommand(redisClient *c);
 void msetCommand(redisClient *c);
 void msetnxCommand(redisClient *c);
+void iaddCommand(redisClient *c);
+void iremCommand(redisClient *c);
+void irembystabCommand(redisClient *c);
+void istabCommand(redisClient *c);
+void istabIntervalCommand(redisClient *c);
 void zaddCommand(redisClient *c);
 void zincrbyCommand(redisClient *c);
 void zrangeCommand(redisClient *c);
