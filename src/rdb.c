@@ -915,6 +915,40 @@ robj *rdbLoadObject(int rdbtype, rio *rdb) {
         /* All pairs should be read by now */
         redisAssert(len == 0);
 
+    } else if (rdbtype == REDIS_RDB_TYPE_ISET) {
+        /* Read list/set value */
+        
+        size_t isetlen;
+        avl * tree;
+        size_t maxelelen = 0;
+        
+        if ((isetlen = rdbLoadLen(rdb,NULL)) == REDIS_RDB_LENERR) return NULL;
+        o = createIsetObject();
+        tree = o->ptr;
+        
+        /* Load every single element of the list/set */
+        while(isetlen--) {
+            robj *ele;
+            double score1;
+            double score2;
+            
+            avlNode *inode;
+            
+            if ((ele = rdbLoadEncodedStringObject(rdb)) == NULL) return NULL;
+            ele = tryObjectEncoding(ele);
+            if (rdbLoadDoubleValue(rdb,&score1) == -1) return NULL;
+            if (rdbLoadDoubleValue(rdb,&score2) == -1) return NULL;
+            
+            /* Don't care about integer-encoded strings. */
+            if (ele->encoding == REDIS_ENCODING_RAW &&
+                sdslen(ele->ptr) > maxelelen)
+                maxelelen = sdslen(ele->ptr);
+            
+            inode = avlInsert(tree, score1, score2, ele);
+            dictAdd(tree->dict,ele,&inode->scores);
+            incrRefCount(ele); /* Added to dictionary. */
+        }
+        
     } else if (rdbtype == REDIS_RDB_TYPE_HASH_ZIPMAP  ||
                rdbtype == REDIS_RDB_TYPE_LIST_ZIPLIST ||
                rdbtype == REDIS_RDB_TYPE_SET_INTSET   ||
