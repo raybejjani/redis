@@ -150,27 +150,43 @@ start_server {tags {"iset"}} {
         r iadd itmp 100 200 100_200
         r iadd itmp 200 300 200_300
         r iadd itmp 150 250 150_250
-  
+
         # Create a right-right tree for balancing
         r iadd itmp 300 400 300_400
         r iadd itmp 400 500 400_500
-    
+
         # Create a left-right tree for balancing
         r iadd itmp 50 100 50_100
         r iadd itmp 75 125 75_125
-    
+
         # Create a left-left tree for balancing
         r iadd itmp 25 50 25_50
         r iadd itmp 0 25 0_25
-    
+
+        r iadd itmp 101 201 101_201
+        r iadd itmp 201 301 201_301
+        r iadd itmp 151 251 151_251
+
+        # Create a right-right tree for balancing
+        r iadd itmp 301 401 301_401
+        r iadd itmp 401 501 401_501
+
+        # Create a left-right tree for balancing
+        r iadd itmp 51 101 51_101
+        r iadd itmp 76 126 76_126
+
+        # Create a left-left tree for balancing
+        r iadd itmp 26 51 26_51
+        r iadd itmp 1 26 1_26
+
         assert_equal {1} [r irem itmp 100_200]
         assert_equal {1} [r irem itmp 50_100]
         
-        assert_equal_elements {0_25} [r istab itmp 23]
-        assert_equal_elements {25_50} [r istab itmp 40]
-        assert_equal_elements {75_125} [r istab itmp 77]
-        assert_equal_elements {150_250} [r istab itmp 175]
-        assert_equal_elements {300_400} [r istab itmp 350]
+        assert_equal_elements {0_25 1_26} [r istab itmp 23]
+        assert_equal_elements {25_50 26_51} [r istab itmp 40]
+        assert_equal_elements {75_125 76_126} [r istab itmp 77]
+        assert_equal_elements {150_250 151_251} [r istab itmp 175]
+        assert_equal_elements {300_400 301_401} [r istab itmp 350]
     }
 
     test "ISET adding multiple keys to a node then deleting one" {
