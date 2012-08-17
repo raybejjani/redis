@@ -163,21 +163,8 @@ start_server {tags {"iset"}} {
         r iadd itmp 25 50 25_50
         r iadd itmp 0 25 0_25
 
-        r iadd itmp 101 201 101_201
-        r iadd itmp 201 301 201_301
-        r iadd itmp 151 251 151_251
-
-        # Create a right-right tree for balancing
-        r iadd itmp 301 401 301_401
-        r iadd itmp 401 501 401_501
-
-        # Create a left-right tree for balancing
+        # Causes the code to fail.
         r iadd itmp 51 101 51_101
-        r iadd itmp 76 126 76_126
-
-        # Create a left-left tree for balancing
-        r iadd itmp 26 51 26_51
-        r iadd itmp 1 26 1_26
 
         assert_equal {1} [r irem itmp 100_200]
         assert_equal {1} [r irem itmp 50_100]
