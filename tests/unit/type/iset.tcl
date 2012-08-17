@@ -172,6 +172,20 @@ start_server {tags {"iset"}} {
         assert_equal_elements {150_250} [r istab itmp 175]
         assert_equal_elements {300_400} [r istab itmp 350]
     }
+    
+    test "ISET current failure case" {
+        r del itmp
+        r iadd itmp 0 255 0_255
+        r iadd itmp 0 127 0_127
+        r iadd itmp 256 511 256_511
+        r iadd itmp 0 1023 0_1023
+        r iadd itmp 1024 2047 1024_2047
+        r iadd itmp 128 255 128_255
+        
+        r irem itmp 0_127
+        r irem itmp 256_511
+    
+    }
 
     test "ISET adding multiple keys to a node then deleting one" {
         r del itmp
