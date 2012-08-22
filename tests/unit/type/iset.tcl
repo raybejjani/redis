@@ -169,11 +169,11 @@ start_server {tags {"iset"}} {
         assert_equal {1} [r irem itmp 100_200]
         assert_equal {1} [r irem itmp 50_100]
         
-        assert_equal_elements {0_25 1_26} [r istab itmp 23]
-        assert_equal_elements {25_50 26_51} [r istab itmp 40]
-        assert_equal_elements {75_125 76_126} [r istab itmp 77]
-        assert_equal_elements {150_250 151_251} [r istab itmp 175]
-        assert_equal_elements {300_400 301_401} [r istab itmp 350]
+        assert_equal_elements {0_25} [r istab itmp 23]
+        assert_equal_elements {25_50} [r istab itmp 40]
+        assert_equal_elements {75_125 51_101} [r istab itmp 77]
+        assert_equal_elements {150_250} [r istab itmp 175]
+        assert_equal_elements {300_400} [r istab itmp 350]
     }
     
     test "ISET current failure case" {

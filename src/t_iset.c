@@ -425,15 +425,19 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
             }
 
             // Remove the replacementNode from the tree
-            int throwaway;
-            heightDelta = avlRemoveNode(tree, locNode,replacementNode,0,&throwaway);
+            heightDelta = avlRemoveNode(tree, locNode,replacementNode,0,removed);
             replacementNode->left = locNode->left;
             replacementNode->right = locNode->right;
             locNode->right->parent = replacementNode;
             locNode->left->parent = replacementNode;
             replacementNode->balance = locNode->balance;
-            if (locNode->parent)
+            if (locNode->parent) {
+                if (locNode == locNode->parent->left)
+                    locNode->parent->left = replacementNode;
+                else
+                    locNode->parent->right = replacementNode;
                 avlUpdateMaxScores(locNode->parent);
+            }
             locNode->left = NULL;
             locNode->right = NULL;
             if (freeNodeMem)
@@ -451,7 +455,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
     // The node is in the left subtree
     else if (diff > 0) {
         if (locNode->left) {
-            heightDelta = avlRemoveNode(tree, locNode->left,delNode,1,removed);
+            heightDelta = avlRemoveNode(tree, locNode->left,delNode,freeNodeMem,removed);
             if (heightDelta) {
                 locNode->balance = locNode->balance + 1;
                 if (locNode->balance == 0)
@@ -500,7 +504,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
     // The node is in the right subtree
     else if (diff < 0) {
         if (locNode->right) {
-            heightDelta = avlRemoveNode(tree, locNode->right,delNode,1,removed);
+            heightDelta = avlRemoveNode(tree, locNode->right,delNode,freeNodeMem,removed);
             if (heightDelta) {
                 locNode->balance = locNode->balance - 1;
                 if (locNode->balance == 0)
