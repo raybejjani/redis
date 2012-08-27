@@ -83,9 +83,9 @@ int avlNodeCmp(avlNode *a, avlNode *b) {
 void avlLeftRotation(avl * tree, avlNode *locNode) {
     avlNode *newRoot = locNode->right;
     locNode->right = newRoot->left;
+    if (locNode->right) locNode->right->parent = locNode;
     newRoot->left = locNode;
-    if (locNode->right)
-        locNode->right->parent = locNode;
+
     newRoot->parent = locNode->parent;
     locNode->parent = newRoot;
     if (newRoot->parent) {
@@ -103,9 +103,9 @@ void avlLeftRotation(avl * tree, avlNode *locNode) {
 void avlRightRotation(avl * tree, avlNode *locNode) {
     avlNode *newRoot = locNode->left;
     locNode->left = newRoot->right;
+    if (locNode->left) locNode->left->parent = locNode;
     newRoot->right = locNode;
-    if (locNode->left)
-        locNode->left->parent = locNode;
+
     newRoot->parent = locNode->parent;
     locNode->parent = newRoot;
     if (newRoot->parent) {
@@ -146,8 +146,7 @@ void avlUpdateMaxScores(avlNode *locNode) {
             oldNodeMax = locNode->left->scores[1];
             oldNodeMax = (oldNodeMax > locNode->left->subLeftMax) ? oldNodeMax : locNode->left->subLeftMax;
             oldNodeMax = (oldNodeMax > locNode->left->subRightMax) ? oldNodeMax : locNode->left->subRightMax;
-            if (locNode->subLeftMax < oldNodeMax)
-                locNode->subLeftMax = oldNodeMax;
+            locNode->subLeftMax = oldNodeMax;
         }
         else {
             locNode->subLeftMax = -INFINITY;
@@ -156,8 +155,7 @@ void avlUpdateMaxScores(avlNode *locNode) {
             oldNodeMax = locNode->right->scores[1];
             oldNodeMax = (oldNodeMax > locNode->right->subLeftMax) ? oldNodeMax : locNode->right->subLeftMax;
             oldNodeMax = (oldNodeMax > locNode->right->subRightMax) ? oldNodeMax : locNode->right->subRightMax;
-            if (locNode->subRightMax < oldNodeMax)
-                locNode->subRightMax = oldNodeMax;
+            locNode->subRightMax = oldNodeMax;
         }
         else {
             locNode->subRightMax = -INFINITY;
@@ -188,29 +186,19 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
                     return 1;
 
                 // Tree is unbalanced at this point
+                // Case 1 at http://www.stanford.edu/~blp/avl/libavl.html/Rebalancing-AVL-Trees.html#index-rebalance-after-AVL-insertion-236
                 if (locNode->left->balance < 0) {
                     // Left-Left, single right rotation needed
                     avlRightRotation(tree,locNode);
-                    // Update locNode balance
-                    if (locNode->left) {
-                        if (locNode->right) {
-                            locNode->balance = locNode->left->balance + locNode->right->balance;
-                        }
-                        else {
-                            locNode->balance = locNode->left->balance - 1;
-                        }
-                    } else if (locNode->right) {
-                        locNode->balance = locNode->right->balance + 1;
-                    }
-                    else {
-                        locNode->balance = 0;
-                    }
-                    
-                    if (locNode->right)
-                        locNode->right->balance = 0;
+
+                    //Both locNode and its parent have a zero balance; see note at the link above
+                    locNode->balance = 0;
                     locNode->parent->balance = 0;
-                    
+
                     locNode->subLeftMax = locNode->parent->subRightMax;
+                    //XXX: What is this, I don't even?
+                    //     locNode->parent->subRightMax should be the max of the subtree
+                    //     *rooted at locNode*, right?
                     locNode->parent->subRightMax = -INFINITY;
                 }
                 else {
@@ -253,23 +241,7 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
                     // Right-Right, single left rotation needed
                     avlLeftRotation(tree,locNode);
 
-                    // Update locNode balance
-                    if (locNode->left) {
-                        if (locNode->right) {
-                            locNode->balance = locNode->left->balance + locNode->right->balance;
-                        }
-                        else {
-                            locNode->balance = locNode->left->balance - 1;
-                        }
-                    } else if (locNode->right) {
-                        locNode->balance = locNode->right->balance + 1;
-                    }
-                    else {
-                        locNode->balance = 0;
-                    }
-                    
-                    if (locNode->left)
-                        locNode->left->balance = 0;
+                    locNode->balance = 0;
                     locNode->parent->balance = 0;
 
                     locNode->subRightMax = locNode->parent->subLeftMax;
@@ -391,6 +363,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
                     return -1;
                 }
                 avlRemoveFromParent(tree,locNode,locNode->right);
+                locNode->right->parent = locNode->parent;
                 if (locNode->parent)
                     avlUpdateMaxScores(locNode->parent);
                 locNode->right = NULL;
@@ -401,6 +374,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
             }
             if (!locNode->right) {
                 avlRemoveFromParent(tree,locNode,locNode->left);
+                locNode->left->parent = locNode->parent;
                 if (locNode->parent)
                     avlUpdateMaxScores(locNode->parent);
                 locNode->left = NULL;
@@ -426,18 +400,33 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
 
             // Remove the replacementNode from the tree
             heightDelta = avlRemoveNode(tree, locNode,replacementNode,0,removed);
+
+            //if the replacement node is a direct child of locNode,
+            //don't set it up to point to itself
+            if (locNode->right) locNode->right->parent = replacementNode;
+            if (locNode->left)  locNode->left->parent = replacementNode;
+
             replacementNode->left = locNode->left;
             replacementNode->right = locNode->right;
-            locNode->right->parent = replacementNode;
-            locNode->left->parent = replacementNode;
+            replacementNode->parent = locNode->parent;
             replacementNode->balance = locNode->balance;
-            if (locNode->parent) {
+
+            //Now replace the tree's root with replacementNode if it's the root
+            //otherwise place the replacement under the parent
+            if (locNode == tree->root) {
+                tree->root = replacementNode;
+
+                avlUpdateMaxScores(replacementNode);
+            }
+            else {
                 if (locNode == locNode->parent->left)
                     locNode->parent->left = replacementNode;
                 else
                     locNode->parent->right = replacementNode;
-                avlUpdateMaxScores(locNode->parent);
+
+                avlUpdateMaxScores(replacementNode);
             }
+
             locNode->left = NULL;
             locNode->right = NULL;
             if (freeNodeMem)
@@ -540,8 +529,10 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
 
                 locNode->subLeftMax = locNode->parent->subRightMax;
                 locNode->parent->left->subRightMax = locNode->parent->subLeftMax;
+
                 locNode->parent->subRightMax = -INFINITY;
                 locNode->parent->subLeftMax = -INFINITY;
+                avlUpdateMaxScores(locNode->parent);
 
                 return -1;
             }
@@ -771,11 +762,11 @@ void genericStabCommand(redisClient *c, robj *lscoreObj, robj *rscoreObj, int in
         return;
     }
 
-    if ((iobj = lookupKeyReadOrReply(c,key,shared.nokeyerr)) == NULL ||
+    if ((iobj = lookupKeyReadOrReply(c,key,shared.emptymultibulk)) == NULL ||
         checkType(c,iobj,REDIS_ISET)) return;
 
     tree = (avl *) (iobj->ptr);
-    resnode = avlStab(((avl *) (iobj->ptr))->root, lscore, rscore, NULL);
+    resnode = avlStab(tree->root, lscore, rscore, NULL);
 
     /* No results. */
     if (resnode == NULL) {
@@ -922,5 +913,6 @@ void iremCommand(redisClient *c) {
         signalModifiedKey(c->db,key);
         server.dirty += deleted;
     }
+
     addReplyLongLong(c,deleted);
 }
