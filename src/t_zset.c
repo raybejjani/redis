@@ -2179,3 +2179,57 @@ void zrankCommand(redisClient *c) {
 void zrevrankCommand(redisClient *c) {
     zrankGenericCommand(c, 1);
 }
+
+void zaveragescoreCommand(redisClient *c) {
+    robj *key = c->argv[1];
+    robj *zobj;
+    double average;
+    int count;
+
+    /* Fetch the object */
+    if ((zobj = lookupKeyReadOrReply(c,key,shared.nullbulk)) == NULL ||
+        checkType(c,zobj,REDIS_ZSET)) return;
+
+    average = 0;
+
+    if (zobj->encoding == REDIS_ENCODING_ZIPLIST) {
+        unsigned char *zl = zobj->ptr;
+        unsigned char *eptr, *sptr;
+
+        eptr = ziplistIndex(zl,0);
+        redisAssertWithInfo(c,zobj,eptr != NULL);
+        sptr = ziplistNext(zl,eptr);
+        redisAssertWithInfo(c,zobj,sptr != NULL);
+
+        if (eptr != NULL) {
+            average = zzlGetScore(sptr);
+            zzlNext(zl,&eptr,&sptr);
+            count = 2;
+            while(eptr != NULL) {
+                average = ((average/count)*(count-1)) + (zzlGetScore(sptr)/count);
+                count++;
+                zzlNext(zl,&eptr,&sptr);
+            }
+        }
+    } else if (zobj->encoding == REDIS_ENCODING_SKIPLIST) {
+        zset *zs = zobj->ptr;
+        zskiplist *zsl = zs->zsl;
+        zskiplistNode *ln;
+
+        ln = zsl->header->level[0].forward;
+        if (ln != NULL) {
+            average = ln->score;
+            ln = ln->level[0].forward;
+            count = 2;
+            while(ln != NULL) {
+                average = ((average/count)*(count-1)) + (ln->score/count);
+                count++;
+                ln = ln->level[0].forward;
+            }
+        }
+    } else {
+        redisPanic("Unknown sorted set encoding");
+    }
+
+    addReplyDouble(c,average);
+}
