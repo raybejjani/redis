@@ -42,7 +42,7 @@ avlNode *avlCreateNode(double lscore, double rscore, robj *obj) {
 
     if (obj)
         incrRefCount(obj);
-    
+
     return an;
 }
 
@@ -212,7 +212,7 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
                     locNode->parent->subRightMax = -INFINITY;
                     locNode->parent->subLeftMax = -INFINITY;
                 }
-                
+
                 avlUpdateMaxScores(locNode->parent);
             }
             return 0;
@@ -258,7 +258,7 @@ int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode) {
                     locNode->parent->subRightMax = -INFINITY;
                     locNode->parent->subLeftMax = -INFINITY;
                 }
-                
+
                 avlUpdateMaxScores(locNode->parent);
             }
             return 0;
@@ -434,7 +434,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
 
             if (replacementNode->balance == 0)
                 return heightDelta;
-            
+
             *removed = 1;
 
             return 0;
@@ -544,7 +544,7 @@ int avlRemoveNode(avl * tree, avlNode *locNode, avlNode *delNode, char freeNodeM
 
 int avlRemove(avl *tree, double lscore, double rscore, robj * obj) {
     int removed = 0;
-    
+
     if (!tree->root)
         return 0;
 
@@ -557,8 +557,12 @@ int avlRemove(avl *tree, double lscore, double rscore, robj * obj) {
 
     if (tree->size == 0)
         tree->root = NULL;
-    
+
     return removed;
+}
+
+long long isetLength(robj *obj) {
+    return ((avl *) obj)->size;
 }
 
 /*

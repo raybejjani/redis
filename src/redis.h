@@ -477,7 +477,7 @@ typedef struct avlNode {
 typedef struct avl {
        struct avlNode *root;
     dict *dict;
-       unsigned long size;
+       long long size;
 } avl;
 
 typedef struct iset {
@@ -965,6 +965,7 @@ void avlRightRotation(avl * tree, avlNode *locNode);
 void avlResetBalance(avlNode *locNode);
 int avlInsertNode(avl * tree, avlNode *locNode, avlNode *insertNode);
 avlNode *avlInsert(avl *tree, double lscore, double rscore, robj *obj);
+long long isetLength(robj *obj);
 
 /* Sorted sets data type */
 
