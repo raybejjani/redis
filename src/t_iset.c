@@ -603,8 +603,15 @@ avlResultNode * avlStab(avlNode *node, double min, double max, avlResultNode *re
         results = avlStab(node->left, min, max, results);
 
     // Check to see if this node overlaps.
-    // For now we're only going to check for containment.
-    if (min >= node->scores[0] && max <= node->scores[1]) {
+    // - interval is fully contained in this node
+    // - interval fully contains this node
+    // - interval's end overlaps this node
+    // - intervals beginning overlaps this node
+    if ((min >= node->scores[0] && max <= node->scores[1]) ||
+        (min <= node->scores[0] && node->scores[1] <= max) ||
+        (min < node->scores[0] && node->scores[0] <= max && max <= node->scores[1]) ||
+        (node->scores[0] < min && min < node->scores[1] && node->scores[1] <= max))
+    {
         avlResultNode * newResult = avlCreateResultNode(node);
         newResult->next = results;
         results = newResult;
